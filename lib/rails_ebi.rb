@@ -1,3 +1,0 @@
-module RailsEbi
-  # Your code goes here...
-end

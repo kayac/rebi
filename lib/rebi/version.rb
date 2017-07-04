@@ -1,3 +1,3 @@
-module RailsEbi
+module Rebi
   VERSION = '0.1.0'
 end

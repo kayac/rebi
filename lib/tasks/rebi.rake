@@ -1,4 +1,4 @@
 # desc "Explaining what the task does"
-# task :rails_ebi do
+# task :rebi do
 #   # Task goes here
 # end
