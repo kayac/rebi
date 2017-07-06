@@ -16,6 +16,7 @@ module Rebi
         'event.updatestarting': 'Environment update is starting.',
         'event.redmessage': 'Environment health has been set to RED',
         'event.commandfailed': 'Command failed on instance',
+        'event.launchfailed': 'Failed to launch',
         'event.redtoyellowmessage': 'Environment health has transitioned from YELLOW to RED',
         'event.yellowmessage': 'Environment health has been set to YELLOW',
         'event.greenmessage': 'Environment health has been set to GREEN',
@@ -80,7 +81,22 @@ module Rebi
       client.describe_configuration_settings({
         application_name: app_name,
         environment_name: name
-        }).configuration_settings.first.option_settings
+      }).configuration_settings.first.option_settings.map do |o|
+        {
+          namespace: o.namespace,
+          value: o.value,
+          resource_name: o.resource_name,
+          option_name: o.option_name,
+        }.with_indifferent_access
+      end
+    end
+
+    def environment_variables
+      option_settings.select do |o|
+          o[:namespace] == Rebi::ConfigEnvironment::NAMESPACE[:app_env]
+      end.map do |o|
+            [o[:option_name], o[:value]]
+      end.to_h.with_indifferent_access
     end
 
     def check_created
@@ -214,6 +230,7 @@ module Rebi
             'event.launchbad',
             'event.updatebad',
             'event.commandfailed',
+            'event.launchfailed',
           ].map {|k| response_msgs(k)}.any? {|s| mes.match(s)}
         raise Rebi::Error::ServiceError.new(mes)
       end

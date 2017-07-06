@@ -1,4 +1,19 @@
 module Rebi
+  class ErbHelper
+    def initialize input, env_vars
+      @input = input
+      @env = env_vars || {}
+    end
+
+    def rebi_env k=nil
+      k.present? ? @env[k] : @env
+    end
+
+    def result
+      ERB.new(@input).result(binding)
+    end
+  end
+
   class ZipHelper
 
     include Singleton
@@ -38,7 +53,7 @@ module Rebi
         ebextensions.each do |ex_folder|
           Dir.glob("#{ex_folder}/*.config") do |fname|
             next unless (File.file?(fname) && files.include?(fname))
-            next unless y = YAML::load(ERB.new(File.read(fname)).result)
+            next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf.environment_variables).result)
             basename = File.basename(fname)
             target = ".ebextensions/#{basename}"
             tmp_yaml = "#{tmp_folder}/#{basename}"

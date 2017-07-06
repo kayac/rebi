@@ -12,6 +12,7 @@ module Rebi
                 :instance_type,
                 :instance_num,
                 :key_name,
+                :service_role,
                 :ebextensions,
                 :solution_stack_name,
                 :cfg_file,
@@ -22,6 +23,7 @@ module Rebi
 
     NAMESPACE ={
       app_env: "aws:elasticbeanstalk:application:environment",
+      eb_env: "aws:elasticbeanstalk:environment",
       autoscaling_launch: "aws:autoscaling:launchconfiguration",
       autoscaling_asg: "aws:autoscaling:asg",
       elb_policies: "aws:elb:policies",
@@ -29,6 +31,12 @@ module Rebi
       elb_loadbalancer: "aws:elb:loadbalancer",
       healthreporting: "aws:elasticbeanstalk:healthreporting:system",
       eb_command: "aws:elasticbeanstalk:command",
+    }
+
+    UPDATEABLE_NS = {
+      autoscaling_asg: [:MaxSize, :MinSize],
+      autoscaling_launch: [:InstanceType, :EC2KeyName],
+      eb_env: [:ServiceRole],
     }
 
     def initialize stage, env_name, env_conf={}
@@ -111,6 +119,10 @@ module Rebi
       @key_name ||= raw_conf[:key_name]
     end
 
+    def service_role
+      raw_conf.key?(:service_role) ? raw_conf[:service_role] : 'aws-elasticbeanstalk-service-role'
+    end
+
     def cfg_file
       @cfg_file ||= raw_conf[:cfg_file]
       return @cfg_file if @cfg_file.blank?
@@ -166,6 +178,10 @@ module Rebi
       end.to_h.with_indifferent_access
     end
 
+    def env_var_for_erb
+      OpenStruct.new(REBI_ENV: environment_variables)
+    end
+
     def option_settings
       opt = (cfg && cfg[:OptionSettings]) || {}.with_indifferent_access
 
@@ -187,6 +203,12 @@ module Rebi
       if key_name.present?
         opt[NAMESPACE[:autoscaling_launch]].merge!({
           EC2KeyName: key_name
+        }.with_indifferent_access)
+      end
+
+      if service_role.present?
+        opt[NAMESPACE[:eb_env]].merge!({
+          ServiceRole: service_role
         }.with_indifferent_access)
       end
 
@@ -230,6 +252,10 @@ module Rebi
         end
       end
       return res
+    end
+
+    def diff_options opts
+
     end
   end
 end

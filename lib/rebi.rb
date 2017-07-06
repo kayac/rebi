@@ -9,6 +9,7 @@ require 'pathname'
 require 'zip'
 require 'fileutils'
 require 'erb'
+require 'ostruct'
 
 require 'rebi/application'
 require 'rebi/environment'
@@ -39,6 +40,10 @@ module Rebi
   def config
     yield Rebi::Config.instance if block_given?
     return Rebi::Config.instance
+  end
+
+  def reload!
+    config.reload!
   end
 
   def log mes, prefix=nil
