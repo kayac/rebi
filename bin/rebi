@@ -1,0 +1,76 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'commander/import'
+require 'rebi'
+
+program :name, 'Rebi'
+program :version, Rebi::VERSION
+program :description, 'Elasticbeanstalk deployment tool'
+
+command :deploy do |c|
+  c.syntax = 'rebi deploy stage [env_name] [--options]'
+  c.description = 'Deploy single or multiple ElasticBeanstalk environments'
+  c.example 'Deploy only web environment in development', 'rebi deploy development web'
+  c.example 'Deploy all environments in development', 'rebi deploy development'
+  c.option '--skip-opt-settings', 'Skip update option settings'
+  c.option '--only-opt-settings', 'Update option settings only'
+  c.action do |args, options|
+    stage, env_name = args
+    raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
+
+    if env_name.present?
+      Rebi.app.deploy stage, env_name
+    else
+      if agree("Do you want to deploy all environments in #{stage} stage?(Y/n)")
+        Rebi.log("Preparing for deployment")
+        Rebi.app.deploy stage
+      end
+    end
+  end
+end
+
+command :get_env do |c|
+  c.syntax = 'rebi get_env stage [env_name] [--options]'
+  c.description = 'Get using environment variables or environment variables from  config file'
+  c.example 'Get environment variables of web in development', 'rebi get_env development web'
+  c.example 'Get environment variables of development stages', 'rebi get_env development'
+  c.option '--from-config', 'Get environment variables from config'
+  c.action do |args, options|
+    stage, env_name = args
+    raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
+    Rebi.app.print_environment_variables stage, env_name, options.from_config
+  end
+end
+
+command :status do |c|
+  c.syntax = 'rebi status stage [env_name]'
+  c.description = 'Get current status'
+  c.action do |args, options|
+    stage, env_name = args
+    raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
+    Rebi.app.print_environment_status stage, env_name
+  end
+end
+
+command :init do |c|
+  c.syntax = 'rebi init '
+  c.description = 'Create sample config yaml'
+  c.action do |args, options|
+    p "In development"
+  end
+end
+
+command :terminate do |c|
+  c.syntax = 'rebi terminate stage env_name '
+  c.description = 'Terminate environment'
+  c.action do |args, options|
+    stage, env_name = args
+    raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
+    raise Rebi::Error.new("Env name cannot be nil") if env_name.blank?
+    env_conf = Rebi.config.environment(stage, env_name)
+    if ask("Type '#{env_conf.name}' to confirm termination") == env_conf.name
+      Rebi.app.terminate! stage, env_name
+    end
+  end
+end

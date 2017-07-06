@@ -1,0 +1,49 @@
+PATH
+  remote: .
+  specs:
+    rebi (0.1.0)
+      activesupport (~> 5.0.2)
+      aws-sdk (~> 2.10.2)
+      colorize (~> 0.8.0)
+      commander (~> 4.4.3)
+      dotenv (~> 2.1.2)
+      rubyzip (~> 1.2.1)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    activesupport (5.0.4)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      i18n (~> 0.7)
+      minitest (~> 5.1)
+      tzinfo (~> 1.1)
+    aws-sdk (2.10.8)
+      aws-sdk-resources (= 2.10.8)
+    aws-sdk-core (2.10.8)
+      aws-sigv4 (~> 1.0)
+      jmespath (~> 1.0)
+    aws-sdk-resources (2.10.8)
+      aws-sdk-core (= 2.10.8)
+    aws-sigv4 (1.0.0)
+    colorize (0.8.1)
+    commander (4.4.3)
+      highline (~> 1.7.2)
+    concurrent-ruby (1.0.5)
+    dotenv (2.1.2)
+    highline (1.7.8)
+    i18n (0.8.4)
+    jmespath (1.3.1)
+    minitest (5.10.2)
+    rubyzip (1.2.1)
+    thread_safe (0.3.6)
+    tzinfo (1.2.3)
+      thread_safe (~> 0.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  rebi!
+
+BUNDLED WITH
+   1.12.5

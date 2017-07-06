@@ -13,10 +13,12 @@ module Rebi
 
     RESPONSES = {
         'event.createstarting': 'createEnvironment is starting.',
+        'event.terminatestarting': 'terminateEnvironment is starting.',
         'event.updatestarting': 'Environment update is starting.',
         'event.redmessage': 'Environment health has been set to RED',
         'event.commandfailed': 'Command failed on instance',
         'event.launchfailed': 'Failed to launch',
+        'event.deployfailed': 'Failed to deploy application.',
         'event.redtoyellowmessage': 'Environment health has transitioned from YELLOW to RED',
         'event.yellowmessage': 'Environment health has been set to YELLOW',
         'event.greenmessage': 'Environment health has been set to GREEN',
@@ -100,7 +102,7 @@ module Rebi
     end
 
     def check_created
-      raise Rebi::Error::EnvironmentNotExisted.new unless created?
+      raise Rebi::Error::EnvironmentNotExisted.new("#{name} not exists") unless created?
       return created?
     end
 
@@ -130,7 +132,7 @@ module Rebi
       start = Time.now
       finished = false
       last_time = Time.now - 30.minute
-      Thread.new do
+      thread = Thread.new do
         while (start + Rebi.config.timeout) > Time.now && !finished
           events(last_time, request_id).reverse.each do |e|
             finished ||= success_message?(e.message)
@@ -139,10 +141,10 @@ module Rebi
           end
           sleep(5) unless finished
         end
-        true
-      end.join
-      log ("Timeout") unless finished
-      request_id
+        log ("Timeout") unless finished
+      end
+      thread.join
+      return thread
     end
 
     def events start_time=Time.now, request_id=nil
@@ -207,6 +209,21 @@ module Rebi
       return request_id
     end
 
+    def terminate!
+      check_created
+      log("Start terminating")
+      client.terminate_environment({
+        environment_name: name,
+        environment_id: id,
+        })
+      start_time = Time.now
+
+      request_id = events(start_time).select do |e|
+        e.message.match(response_msgs('event.updatestarting'))
+      end.map(&:request_id).first
+      return request_id
+    end
+
     def option_settings_changed?
       false # TODO
     end
@@ -231,6 +248,7 @@ module Rebi
             'event.updatebad',
             'event.commandfailed',
             'event.launchfailed',
+            'event.deployfailed',
           ].map {|k| response_msgs(k)}.any? {|s| mes.match(s)}
         raise Rebi::Error::ServiceError.new(mes)
       end

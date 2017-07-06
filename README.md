@@ -1,24 +1,29 @@
 # Rebi
-Short description and motivation.
+Deployment tool for Elasticbeanstalk
 
-## Usage
-How to use my plugin.
+# Features
+  - Switchable  + multiple bextensions folder
+  - Support erb in ebextension config files
+  - Support env_file for environment variables
+  - Multiple deployment
+  - Deploy source code along with updating beanstalk options
+  - Simple config
 
 ## Installation
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'rebi'
-```
-
-And then execute:
-```bash
-$ bundle
-```
-
 Or install it yourself as:
 ```bash
 $ gem install rebi
+```
+
+## Usage
+How to use my plugin.
+```bash
+$ bundle exec rebi deploy development web
+```
+
+For more help
+```
+$ bundle exec rebi --help
 ```
 
 ## Contributing

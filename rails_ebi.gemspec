@@ -10,15 +10,19 @@ Gem::Specification.new do |s|
   s.authors     = ["KhiemNS"]
   s.email       = ["khiemns.k54@gmail.com"]
   s.homepage    = "https://github.com/khiemns54/rebi"
-  s.summary     = "Deploy rails app to Elastic Beanstalk."
-  s.description = "Deploy rails app to Elastic Beanstalk via rake task with switchable ebextensions"
+  s.summary     = "Deploy ElasticBeanstalk with multiple deploy, switchable and dynamic generated ebextensions with erb"
+  s.description = "Deploy ElasticBeanstalk with multiple deploy, switchable and dynamic generated ebextensions with erb"
   s.license     = "MIT"
 
   s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+
+  s.executables = ["rebi"]
 
   s.add_dependency "rubyzip", "~> 1.2.1"
   s.add_dependency "aws-sdk", "~> 2.10.2"
   s.add_dependency "dotenv", "~> 2.1.2"
   s.add_dependency "colorize", "~> 0.8.0"
   s.add_dependency "activesupport", "~> 5.0.2"
+  s.add_dependency "commander", "~> 4.4.3"
+
 end

@@ -16,17 +16,6 @@ module Rebi
       Rebi::Environment.all app_name
     end
 
-    def get_environment_variables stage_name, env_name
-      environment_option_settings(stage_name, env_name).select do |o|
-        o.namespace == Rebi::ConfigEnvironment::NAMESPACE[:app_env]
-      end.map do |o|
-        {
-          key: o.option_name,
-          value: o.value,
-        }
-      end
-    end
-
     def deploy stage_name, env_name=nil, reload_opt=nil
       return deploy_stage(stage_name) if env_name.blank?
       env = Rebi::Environment.new stage_name, env_name, client
@@ -42,17 +31,71 @@ module Rebi
     end
 
     def deploy_stage stage_name
+      threads = []
       Rebi.config.stage(stage_name).each do |env_name, conf|
         next if conf.blank?
-        Thread.new do
-          deploy stage_name, env_name
+        threads << Thread.new do
+          begin
+            deploy stage_name, env_name
+          rescue Exception => e
+            Rebi.log(e.message, "ERROR")
+          end
         end
+      end
+
+      ThreadsWait.all_waits(*threads)
+    end
+
+    def print_environment_variables stage_name, env_name, from_config=false
+      if env_name.blank?
+        Rebi.config.stage(stage_name).each do |e_name, conf|
+          next if conf.blank?
+          print_environment_variables stage_name, e_name, from_config
+        end
+        return
+      end
+
+      env = Rebi::Environment.new stage_name, env_name, client
+      env_vars = from_config ? env.config.environment_variables : env.environment_variables
+
+      Rebi.log("#{from_config ? "Config" : "Current"} environment variables", env.name)
+      env_vars.each do |k,v|
+        Rebi.log("#{k}=#{v}")
+      end
+      Rebi.log("--------------------------------------", env.name)
+    end
+
+    def print_environment_status stage_name, env_name
+      if env_name.blank?
+        Rebi.config.stage(stage_name).each do |e_name, conf|
+          next if conf.blank?
+          print_environment_status stage_name, e_name
+        end
+        return
+      end
+
+      env = Rebi::Environment.new stage_name, env_name, client
+      Rebi.log("--------- CURRENT STATUS -------------", env.name)
+      Rebi.log("id: #{env.id}", env.name)
+      Rebi.log("Status: #{env.status}", env.name)
+      Rebi.log("Health: #{env.health}", env.name)
+      Rebi.log("--------------------------------------", env.name)
+    end
+
+    def terminate! stage_name, env_name
+      env = Rebi::Environment.new stage_name, env_name, client
+      begin
+        req_id = env.terminate!
+        ThreadsWait.all_waits(env.watch_request req_id) if req_id
+      rescue Rebi::Error::EnvironmentInUpdating => e
+        Rebi.log("Environment in updating", env.name)
+        raise e
       end
     end
 
     def create_app_version env
       start = Time.now.utc
-      source_bundle = Rebi::ZipHelper.instance.gen env.config
+      source_bundle = Rebi::ZipHelper.new.gen(env.config)
       version_label = source_bundle[:label]
       key = "#{app_name}/#{version_label}.zip"
       Rebi.log("Uploading source bundle: #{version_label}.zip", env.config.name)

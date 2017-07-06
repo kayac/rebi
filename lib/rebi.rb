@@ -10,18 +10,22 @@ require 'zip'
 require 'fileutils'
 require 'erb'
 require 'ostruct'
+require 'thread'
+require 'thwait'
 
+require 'rebi/erb_helper'
+require 'rebi/zip_helper'
 require 'rebi/application'
 require 'rebi/environment'
 require 'rebi/config'
 require 'rebi/config_environment'
 require 'rebi/error'
-require 'rebi/zip_helper'
 
 Dotenv.load
 
 module Rebi
   extend self
+
   attr_accessor :config_file
   @config_file = "config/rebi.yml"
 
