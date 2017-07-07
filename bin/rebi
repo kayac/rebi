@@ -4,6 +4,8 @@ require 'rubygems'
 require 'commander/import'
 require 'rebi'
 
+REBI_PATH = File.join(File.dirname(File.expand_path(__FILE__)), "..")
+
 program :name, 'Rebi'
 program :version, Rebi::VERSION
 program :description, 'Elasticbeanstalk deployment tool'
@@ -18,18 +20,18 @@ command :deploy do |c|
   c.description = 'Deploy single or multiple ElasticBeanstalk environments'
   c.example 'Deploy only web environment in development', 'rebi deploy development web'
   c.example 'Deploy all environments in development', 'rebi deploy development'
-  c.option '--skip-opt-settings', 'Skip update option settings'
-  c.option '--only-opt-settings', 'Update option settings only'
+  c.option '--source-only', 'Deploy source only'
+  c.option '--settings-only', 'Deploy option_settings and environment variables only'
   c.action do |args, options|
     stage, env_name = args
     raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
-
+    opts = options.__hash__
     if env_name.present?
-      Rebi.app.deploy stage, env_name
+      Rebi.app.deploy stage, env_name, opts
     else
       if agree("Do you want to deploy all environments in #{stage} stage?(Y/n)")
         Rebi.log("Preparing for deployment")
-        Rebi.app.deploy stage
+        Rebi.app.deploy stage, opts
       end
     end
   end
@@ -61,8 +63,9 @@ end
 command :sample do |c|
   c.syntax = 'rebi sample '
   c.description = 'Create sample config yaml'
+  c.example 'Create sample', 'rebi sample > rebi.yml '
   c.action do |args, options|
-    p "In development"
+    puts File.read("#{REBI_PATH}/sample/rebi.yml")
   end
 end
 

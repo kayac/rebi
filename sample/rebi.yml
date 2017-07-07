@@ -1,0 +1,42 @@
+app_name: App_name # Required
+app_description: Description # Optional
+
+stages: #Required: Hash
+  development: #Stage name
+    web: # Env name
+      name: web01 # Optional, default: #{stage_name}-#{env_name}
+      description: Description # Optional,
+      cname_prefix: prefix # Optional
+      tier: web or worker # Optional, default: web
+      instance_type: t2.small # Optional, default: t2.small
+      instance_num: # Optional: min 1 max 1
+        min: 1
+        max: 1
+      key_name: # Optional, if not set you cannot ssh into ec2 instances
+      service_role: role # Optional, default: aws-elasticbeanstalk-service-role
+      solution_stack_name: Ruby # Optional: default: "64bit Amazon Linux 2017.03 v2.4.1 running Ruby 2.3 (Puma)"
+      env_file: .env.development # Optional
+      environment_variables: # Optional, nil will be deleted when update,
+                             # Use `rebi get_env stage --from-config` to get env settings
+                             # This will be merged into variables from env_file and cfg_file
+                             # Nil env will be deleted when deploy
+
+        - TIER: web
+      ebextensions: ebextension folders # Optional: String or Array of Strings
+                                        # .ebextensions will be added automatically if not exists
+                                        # The below one will be merge in to be above one
+                                        # Example: .ebextensions has 01.config, web_extensions, 02.config, web1_extensions 02.config and 03.config
+                                        # ebextensions:
+                                        #   - web_extensions
+                                        #   - web1_extensions
+                                        # Result will has 01.config, 02.config(from web1_extensions) and 03.config
+      cfg_file: File path or cfg name   # Optional
+
+    worker:
+      # ...
+
+  staging:
+    # ...
+
+  production:
+    # ...

@@ -93,34 +93,22 @@ module Rebi
     end
 
     def instance_type
-      @instance_type ||= raw_conf[:instance_type] || "t2.small"
+      get_opt ns[:autoscaling_launch], :InstanceType
     end
 
     def instance_num
-      return @instance_num  if @instance_num
-      @instance_num = {
-        min: 1,
-        max: 1,
-      }.with_indifferent_access
-
-      if instance_num = raw_conf[:instance_num]
-        if (min = instance_num[:min]) && (max = instance_num[:max]) && (min > 0) && (max >= min)
-          @instance_num[:min] = min
-          @instance_num[:max] = max
-        else
-          raise Rebi::Error::ConfigInvalid.new("instance_num")
-        end
-      end
-
-      return @instance_num
+      {
+        min: get_opt(ns[:autoscaling_asg], :MinSize),
+        max: get_opt(ns[:autoscaling_asg], :MaxSize)
+      }
     end
 
     def key_name
-      @key_name ||= raw_conf[:key_name]
+      get_opt(ns[:autoscaling_launch], :EC2KeyName)
     end
 
     def service_role
-      raw_conf.key?(:service_role) ? raw_conf[:service_role] : 'aws-elasticbeanstalk-service-role'
+      get_opt(ns[:eb_env], :ServiceRole)
     end
 
     def cfg_file
@@ -171,76 +159,20 @@ module Rebi
     end
 
     def environment_variables
-      option_settings.select do |o|
-        o[:namespace] == NAMESPACE[:app_env]
-      end.map do |o|
-          [o[:option_name], o[:value]]
-      end.to_h.with_indifferent_access
+      get_opt(ns(:app_env))
     end
 
-    def env_var_for_erb
-      OpenStruct.new(REBI_ENV: environment_variables)
+    def get_opt namespace, opt_name=nil
+      has_value_by_keys(option_settings, namespace, opt_name)
     end
 
-    def option_settings
-      opt = (cfg && cfg[:OptionSettings]) || {}.with_indifferent_access
+    def get_raw_opt namespace, opt_name=nil
+      has_value_by_keys(raw_conf[:option_settings], namespace, opt_name)
+    end
 
-      NAMESPACE.values.each do |ns|
-        opt[ns] = {}.with_indifferent_access if opt[ns].blank?
-      end
-
-      opt[NAMESPACE[:app_env]].merge!(dotenv.merge(raw_environment_variables)).compact!
-
-      opt[NAMESPACE[:healthreporting]].reverse_merge!({
-        SystemType: 'enhanced',
-      }.with_indifferent_access)
-
-      opt[NAMESPACE[:eb_command]].reverse_merge!({
-        BatchSize: "50",
-        BatchSizeType: "Percentage",
-      }.with_indifferent_access)
-
-      if key_name.present?
-        opt[NAMESPACE[:autoscaling_launch]].merge!({
-          EC2KeyName: key_name
-        }.with_indifferent_access)
-      end
-
-      if service_role.present?
-        opt[NAMESPACE[:eb_env]].merge!({
-          ServiceRole: service_role
-        }.with_indifferent_access)
-      end
-
-      if instance_type.present?
-        opt[NAMESPACE[:autoscaling_launch]].merge!({
-          InstanceType: instance_type
-        }.with_indifferent_access)
-      end
-
-      if instance_num.present?
-        opt[NAMESPACE[:autoscaling_asg]].merge!({
-          MaxSize: instance_num[:max],
-          MinSize: instance_num[:min],
-        }.with_indifferent_access)
-      end
-
-      unless worker?
-        opt[NAMESPACE[:elb_policies]].reverse_merge!({
-          ConnectionDrainingEnabled: true
-        }.with_indifferent_access)
-
-        opt[NAMESPACE[:elb_health]].reverse_merge!({
-          Interval: 30
-        }.with_indifferent_access)
-
-        opt[NAMESPACE[:elb_loadbalancer]].reverse_merge!({
-          CrossZone: true
-        }.with_indifferent_access)
-      end
-
+    def opts_array opts=option_settings
       res = []
-      opt.each do |namespace, v|
+      opts.each do |namespace, v|
         namespace, resource_name = namespace.split(".").reverse
         v.each do |option_name, value|
           res << {
@@ -254,8 +186,131 @@ module Rebi
       return res
     end
 
-    def diff_options opts
+    def option_settings
+      return @opt if @opt.present?
+      opt = (cfg && cfg[:OptionSettings]) || {}.with_indifferent_access
 
+      opt = opt.deep_merge(raw_conf[:option_settings] || {})
+
+      ns.values.each do |ns|
+        opt[ns] = {}.with_indifferent_access if opt[ns].blank?
+      end
+
+      opt = set_opt_env_var opt
+      opt = set_opt_keyname opt
+      opt = set_opt_instance_type opt
+      opt = set_opt_instance_num opt
+      opt = set_opt_service_role opt
+
+      return @opt = opt
+    end
+
+    def ns key=nil
+      key.present? ? NAMESPACE[key.to_sym] : NAMESPACE
+    end
+
+    private
+
+    def has_value_by_keys(hash, *keys)
+      if keys.empty? || hash.blank?
+        return hash
+      else
+        return hash unless k = keys.shift
+        return hash[k] && has_value_by_keys(hash[k], *keys)
+      end
+    end
+
+    def set_opt_keyname opt
+      k = if raw_conf.key?(:key_name)
+        raw_conf[:key_name]
+      elsif get_raw_opt(ns[:autoscaling_launch], :EC2KeyName)
+        get_raw_opt(ns[:autoscaling_launch], :EC2KeyName)
+      else
+        nil
+      end
+      if k.present?
+        opt[ns[:autoscaling_launch]].merge!({
+          EC2KeyName: k
+        }.with_indifferent_access)
+      end
+      return opt
+    end
+
+    def set_opt_service_role opt
+      s_role = if raw_conf.key?(:service_role)
+        raw_conf[:service_role]
+      elsif role = get_raw_opt(ns[:eb_env], :ServiceRole)
+        role
+      else
+        'aws-elasticbeanstalk-service-role'
+      end
+      if s_role.present?
+        opt[ns[:eb_env]].merge!({
+          ServiceRole: s_role,
+        }.with_indifferent_access)
+      end
+      return opt
+    end
+
+    def set_opt_instance_type opt
+      itype = raw_conf[:instance_type] \
+              || get_raw_opt(ns[:autoscaling_launch], :InstanceType) \
+              || "t2.small"
+      if itype.present?
+        opt[ns[:autoscaling_launch]].merge!({
+          InstanceType: itype
+        }.with_indifferent_access)
+      end
+      return opt
+    end
+
+    def set_opt_instance_num opt
+      max = min = 1
+      if raw_conf[:instance_num].present?
+        min = raw_conf[:instance_num][:min]
+        max = raw_conf[:instance_num][:min]
+      elsif mi = get_raw_opt(ns[:autoscaling_asg], :MinSize) \
+            || ma = get_raw_opt(ns[:autoscaling_asg], :MaxSize)
+            min = mi if mi
+            max = ma if ma
+      end
+      opt[ns[:autoscaling_asg]].merge!({
+        MaxSize: max,
+        MinSize: min,
+      }.with_indifferent_access)
+      return opt
+    end
+
+    def set_opt_env_var opt
+      opt[ns[:app_env]].merge!(dotenv.merge(raw_environment_variables))
+      return opt
+    end
+
+    def set_opt_default opt
+
+      opt[ns[:healthreporting]].reverse_merge!({
+        SystemType: 'enhanced',
+      }.with_indifferent_access)
+
+      opt[ns[:eb_command]].reverse_merge!({
+        BatchSize: "50",
+        BatchSizeType: "Percentage",
+      }.with_indifferent_access)
+
+      unless worker?
+        opt[ns[:elb_policies]].reverse_merge!({
+          ConnectionDrainingEnabled: true
+        }.with_indifferent_access)
+
+        opt[NAMESPACE[:elb_health]].reverse_merge!({
+          Interval: 30
+        }.with_indifferent_access)
+
+        opt[NAMESPACE[:elb_loadbalancer]].reverse_merge!({
+          CrossZone: true
+        }.with_indifferent_access)
+      end
+      return opt
     end
   end
 end

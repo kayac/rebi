@@ -95,7 +95,7 @@ module Rebi
 
     def environment_variables
       option_settings.select do |o|
-          o[:namespace] == Rebi::ConfigEnvironment::NAMESPACE[:app_env]
+          o[:namespace] == config.ns(:app_env)
       end.map do |o|
             [o[:option_name], o[:value]]
       end.to_h.with_indifferent_access
@@ -160,7 +160,7 @@ module Rebi
       return self
     end
 
-    def init version_label
+    def init version_label, opts={}
       log("Creating new environment")
       start_time = Time.now
       self.api_data = client.create_environment({
@@ -170,7 +170,7 @@ module Rebi
         version_label: version_label,
         tier: config.tier,
         description: config.description,
-        option_settings: config.option_settings,
+        option_settings: config.opts_array,
       }.merge(if(config.platform_arn)
         { platform_arn: config.platform_arn}
       else
@@ -182,29 +182,41 @@ module Rebi
       return request_id
     end
 
-    def update version_label, reload_opt
+    def update version_label, opts={}
       raise Rebi::Error::EnvironmentInUpdating.new(name) if in_updating?
       log("Start updating")
       start_time = Time.now
-      self.api_data = client.update_environment({
+      deploy_opts = gen_deploy_opts
+      deploy_args = {
         application_name: config.app_name,
         environment_name: config.name,
         version_label: version_label,
         description: config.description,
-      }.merge(!!reload_opt ? {option_settings: config.option_settings} : {}))
+        option_settings: deploy_opts[:option_settings],
+        options_to_remove: deploy_opts[:options_to_remove],
+      }
+
+      if opts[:source_only]
+        deploy_args.delete(:option_settings)
+        deploy_args.delete(:options_to_remove)
+      elsif opts[:settings_only]
+        deploy_args.delete(:version_label)
+      end
+
+      self.api_data = client.update_environment(deploy_args)
 
       request_id = events(start_time).select do |e|
         e.message.match(response_msgs('event.updatestarting'))
       end.map(&:request_id).first
+
       return request_id
     end
 
-    def deploy version_label, reload_opt=nil
+    def deploy version_label, opts={}
       request_id = if created?
-        reload_opt = option_settings_changed? if reload_opt.nil?
-        update version_label, reload_opt
+        update version_label, opts
       else
-        init version_label
+        init version_label, opts
       end
       return request_id
     end
@@ -222,10 +234,6 @@ module Rebi
         e.message.match(response_msgs('event.updatestarting'))
       end.map(&:request_id).first
       return request_id
-    end
-
-    def option_settings_changed?
-      false # TODO
     end
 
     def log mes
@@ -254,6 +262,24 @@ module Rebi
       end
 
       return false
+    end
+
+    def gen_deploy_opts
+      to_deploy = []
+      to_remove = []
+      config.opts_array.each do |o|
+        o = o.deep_dup
+        if o[:namespace] == config.ns(:app_env) && o[:value].blank?
+          o.delete(:value)
+          to_remove << o
+          next
+        end
+        to_deploy << o
+      end
+      return {
+        option_settings: to_deploy,
+        options_to_remove:  to_remove,
+      }
     end
 
     def self.create stage_name, env_name, version_label, client

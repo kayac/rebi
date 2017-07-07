@@ -16,12 +16,12 @@ module Rebi
       Rebi::Environment.all app_name
     end
 
-    def deploy stage_name, env_name=nil, reload_opt=nil
-      return deploy_stage(stage_name) if env_name.blank?
+    def deploy stage_name, env_name=nil, opts={}
+      return deploy_stage(stage_name, opts) if env_name.blank?
       env = Rebi::Environment.new stage_name, env_name, client
       app_version = create_app_version env
       begin
-        req_id = env.deploy app_version, reload_opt
+        req_id = env.deploy app_version, opts
         env.watch_request req_id if req_id
       rescue Rebi::Error::EnvironmentInUpdating => e
         Rebi.log("Environment in updating", env.name)
@@ -30,15 +30,18 @@ module Rebi
       req_id
     end
 
-    def deploy_stage stage_name
+    def deploy_stage stage_name, opts={}
       threads = []
       Rebi.config.stage(stage_name).each do |env_name, conf|
         next if conf.blank?
         threads << Thread.new do
           begin
-            deploy stage_name, env_name
+            deploy stage_name, env_name, opts
           rescue Exception => e
             Rebi.log(e.message, "ERROR")
+            e.backtrace.each do |m|
+              Rebi.log(m, "ERROR")
+            end
           end
         end
       end
