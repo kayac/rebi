@@ -8,6 +8,11 @@ program :name, 'Rebi'
 program :version, Rebi::VERSION
 program :description, 'Elasticbeanstalk deployment tool'
 
+global_option('-c', '--config FILE', 'Load config data for your commands to use') do |file|
+  Rebi.config.config_file = file
+  Rebi.config.reload!
+end
+
 command :deploy do |c|
   c.syntax = 'rebi deploy stage [env_name] [--options]'
   c.description = 'Deploy single or multiple ElasticBeanstalk environments'
@@ -53,8 +58,8 @@ command :status do |c|
   end
 end
 
-command :init do |c|
-  c.syntax = 'rebi init '
+command :sample do |c|
+  c.syntax = 'rebi sample '
   c.description = 'Create sample config yaml'
   c.action do |args, options|
     p "In development"
