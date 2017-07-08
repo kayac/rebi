@@ -20,6 +20,7 @@ require 'rebi/environment'
 require 'rebi/config'
 require 'rebi/config_environment'
 require 'rebi/error'
+require 'rebi/version'
 
 Dotenv.load
 
