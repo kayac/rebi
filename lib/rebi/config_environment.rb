@@ -196,6 +196,7 @@ module Rebi
         opt[ns] = {}.with_indifferent_access if opt[ns].blank?
       end
 
+      opt = set_opt_default opt
       opt = set_opt_env_var opt
       opt = set_opt_keyname opt
       opt = set_opt_instance_type opt
