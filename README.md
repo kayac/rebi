@@ -62,8 +62,18 @@ $ bundle exec rebi deploy development web
 $ bundle exec rebi deploy development
 ```
 
-For more help
+### Get envronment variables and status
+```bash
+# Running envronment variables
+$ bundle exec rebi get_env development
+# envronment variables for config
+$ bundle exec rebi get_env development --from-config
+# Status
+$ bundle exec rebi status development
 ```
+
+###For more help
+```bash
 $ bundle exec rebi --help
 ```
 

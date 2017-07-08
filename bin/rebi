@@ -31,7 +31,7 @@ command :deploy do |c|
     else
       if agree("Do you want to deploy all environments in #{stage} stage?(Y/n)")
         Rebi.log("Preparing for deployment")
-        Rebi.app.deploy stage, opts
+        Rebi.app.deploy stage, nil, opts
       end
     end
   end
