@@ -32,7 +32,7 @@ module Rebi
       files = ls_files
       tmp_file = raw_zip_archive
       tmp_folder = Dir.mktmpdir
-      Zip::File.open(tmp_file, Zip::File::CREATE) do |z|
+      Zip::File.open(tmp_file) do |z|
         ebextensions.each do |ex_folder|
           Dir.glob("#{ex_folder}/*.config") do |fname|
             next unless (File.file?(fname) && files.include?(fname))
@@ -46,18 +46,13 @@ module Rebi
             z.remove target if z.find_entry target
             z.add target, tmp_yaml
           end
-          # if ex_folder != ".ebextensions"
-          #   z.glob("#{ex_folder}/*").each do |e|
-          #     z.remove e.name
-          #   end
-          # end
         end
       end
       FileUtils.rm_rf tmp_folder
       Rebi.log("Zip was created in: #{Time.now - start}s", env_conf.name)
       return {
         label: Time.now.strftime("app_#{env_conf.name}_#{version_label}_%Y%m%d_%H%M%S"),
-        file: tmp_file,
+        file: File.open(tmp_file.path),
         message: message,
       }
     end

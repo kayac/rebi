@@ -2,7 +2,7 @@
 Deployment tool for Elasticbeanstalk
 
 # Features
-  - Switchable  + multiple bextensions folder
+  - Switchable  + multiple ebextensions folder
   - Support erb in ebextension config files
   - Support env_file for environment variables
   - Multiple deployment
@@ -18,14 +18,48 @@ $ gem install rebi
 ## Usage
 How to use my plugin.
 
-Create sample config
+### AWS authentication
+Rebi uses environment variables to get aws credentials
+To set environment variables use `export` or `.env` file
+```bash
+# Use access key
+export AWS_ACCESS_KEY_ID=xxxxx
+export AWS_SECRET_ACCESS_KEY=xxxxxx
+```
+Or
+```bash
+# Use profile
+export AWS_PROFILE=xxxxx
+```
+
+Refer http://docs.aws.amazon.com/sdkforruby/api/Aws/ElasticBeanstalk/Client.html for other settings
+
+### Yaml config
+Default config file is `config/rebi.yml` use `-c` to switch
+```yaml
+app_name: app-name
+stages:
+  development:
+    web:
+      name: web01
+      env_file: .env.development
+      ebextensions: "web-ebextensions"
+```
+
+For other configs( key_name, instance_type, instance_num, service_role,...), please refer sample config
 ```bash
 $ bundle exec rebi sample > rebi.yml
 ```
 
-Default config file is `config/rebi.yml` use `-c` to switch
+### Deploy
 ```bash
+# Single deploy
 $ bundle exec rebi deploy development web
+```
+
+```bash
+# Multiple deploy (if development has more than one environments)
+$ bundle exec rebi deploy development
 ```
 
 For more help
@@ -33,6 +67,7 @@ For more help
 $ bundle exec rebi --help
 ```
 
+### ERB in ebextensions config
 Use `rebi_env` to get environment variables config in .ebextensions
 ```yaml
 # Ex

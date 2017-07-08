@@ -78,6 +78,7 @@ module Rebi
       end
 
       env = Rebi::Environment.new stage_name, env_name, client
+      env.check_created!
       Rebi.log("--------- CURRENT STATUS -------------", env.name)
       Rebi.log("id: #{env.id}", env.name)
       Rebi.log("Status: #{env.status}", env.name)
