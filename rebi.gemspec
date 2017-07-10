@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.description = "Deploy ElasticBeanstalk with multiple deploy, switchable and dynamic generated ebextensions with erb"
   s.license     = "MIT"
 
-  s.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+  s.files = Dir["{app,config,db,lib,sample}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
 
   s.executables = ["rebi"]
 
