@@ -269,7 +269,7 @@ module Rebi
       max = min = 1
       if raw_conf[:instance_num].present?
         min = raw_conf[:instance_num][:min]
-        max = raw_conf[:instance_num][:min]
+        max = raw_conf[:instance_num][:max]
       elsif mi = get_raw_opt(ns[:autoscaling_asg], :MinSize) \
             || ma = get_raw_opt(ns[:autoscaling_asg], :MaxSize)
             min = mi if mi
