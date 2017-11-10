@@ -119,7 +119,7 @@ module Rebi
     end
 
     def options
-      opts = raw_conf[:options].with_indifferent_access || {}
+      opts = (raw_conf[:options] || {}).with_indifferent_access
       JSON.parse(opts.to_json, object_class: OpenStruct)
     end
 
