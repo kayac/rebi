@@ -19,7 +19,8 @@ module Rebi
                 :env_file,
                 :environment_variables,
                 :option_settings,
-                :raw_conf
+                :raw_conf,
+                :options
 
     NAMESPACE ={
       app_env: "aws:elasticbeanstalk:application:environment",
@@ -115,6 +116,11 @@ module Rebi
 
     def default_instance_profile?
       self.instance_profile == DEFAULT_IAM_INSTANCE_PROFILE
+    end
+
+    def options
+      opts = raw_conf[:options].with_indifferent_access || {}
+      JSON.parse(opts.to_json, object_class: OpenStruct)
     end
 
     def cfg_file

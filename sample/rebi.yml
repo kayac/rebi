@@ -33,6 +33,8 @@ stages: #Required: Hash
                                         # Result will has 01.config, 02.config(from web1_extensions) and 03.config
       cfg_file: File path or cfg name   # Optional
 
+      options: #Hash, Other custom options for using in erb
+        use_basic: true # rebi.opts.use_basic
     worker:
       # ...
 

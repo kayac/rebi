@@ -85,13 +85,22 @@ $ bundle exec rebi --help
 ```
 
 ### ERB in ebextensions config
-Use `rebi_env` to get environment variables config in .ebextensions
+Use `rebi.env` to get environment variables config in .ebextensions
 ```yaml
 # Ex
 # .ebextensions/00-envrionments.config
 option_settings:
   - option_name: KEY
-    value: <%= rebi_env[KEY] %>
+    value: <%= rebi.env[KEY] %>
+```
+
+Use `rebi.opts` or `rebi.options` to get options config in .ebextensions
+```yaml
+# Ex
+# .ebextensions/00-envrionments.config
+option_settings:
+  - option_name: KEY
+    value: <%= rebi.options[KEY] %>
 ```
 
 ## Contributing
