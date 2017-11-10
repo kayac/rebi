@@ -18,7 +18,7 @@ module Rebi
 
     def deploy stage_name, env_name=nil, opts={}
       return deploy_stage(stage_name, opts) if env_name.blank?
-      env = Rebi::Environment.new stage_name, env_name, client
+      env = get_environment stage_name, env_name
       app_version = create_app_version env
       begin
         req_id = env.deploy app_version, opts
@@ -58,7 +58,7 @@ module Rebi
         return
       end
 
-      env = Rebi::Environment.new stage_name, env_name, client
+      env = get_environment stage_name, env_name
       env_vars = from_config ? env.config.environment_variables : env.environment_variables
 
       Rebi.log("#{from_config ? "Config" : "Current"} environment variables", env.name)
@@ -77,7 +77,7 @@ module Rebi
         return
       end
 
-      env = Rebi::Environment.new stage_name, env_name, client
+      env = get_environment stage_name, env_name
       env.check_created!
       Rebi.log("--------- CURRENT STATUS -------------", env.name)
       Rebi.log("id: #{env.id}", env.name)
@@ -87,7 +87,7 @@ module Rebi
     end
 
     def terminate! stage_name, env_name
-      env = Rebi::Environment.new stage_name, env_name, client
+      env = get_environment stage_name, env_name
       begin
         req_id = env.terminate!
         ThreadsWait.all_waits(env.watch_request req_id) if req_id
@@ -122,6 +122,63 @@ module Rebi
       return version_label
     end
 
+
+    def print_list
+      others = []
+      configed = Hash.new {|h, k| h[k] = {} }
+      environments.each do |e|
+        if env_conf = Rebi.config.env_by_name(e.environment_name)
+          configed[env_conf.stage.to_s].merge! env_conf.env_name.to_s => env_conf.name
+        else
+          others << e.environment_name
+        end
+      end
+
+      configed.each do |stg, envs|
+        Rebi.log "-------------"
+        Rebi.log "#{stg.camelize}:"
+        envs.each do |k, v|
+          Rebi.log "\t#{k.camelize}: #{v}"
+        end
+      end
+
+      if others.present?
+        Rebi.log "-------------"
+        Rebi.log "Others:"
+        others.each do |e|
+          Rebi.log "\t- #{e}"
+        end
+      end
+    end
+
+    def ssh_interaction stage_name, env_name, opts={}
+      env = get_environment stage_name, env_name
+      instance_ids = env.instance_ids
+      return if instance_ids.empty?
+
+      instance_ids.each.with_index do |i,idx|
+        Rebi.log "#{idx+1}) #{i}"
+      end
+
+      instance_id = instance_ids.first
+
+      if instance_ids.count != 1 && opts[:select]
+
+
+        idx = 0
+        while idx < 1 || idx > instance_ids.count
+          idx = ask_for_integer "Select an instance to ssh into:"
+        end
+        instance_id = instance_ids[idx - 1]
+      end
+
+      Rebi.log "Preparing to ssh into [#{instance_id}]"
+      env.ssh instance_id
+    end
+
+    def get_environment stage_name, env_name
+      Rebi::Environment.new stage_name, env_name, client
+    end
 
     def self.client
       Rebi.client || Aws::ElasticBeanstalk::Client.new

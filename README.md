@@ -8,6 +8,7 @@ Deployment tool for Elasticbeanstalk
   - Multiple deployment
   - Deploy source code along with updating beanstalk options
   - Simple config
+  - Simple ssh
 
 ## Installation
 Or install it yourself as:
@@ -61,6 +62,12 @@ $ bundle exec rebi deploy development web
 # Multiple deploy (if development has more than one environments)
 $ bundle exec rebi deploy development
 ```
+
+### Ssh
+```bash
+$ bundle exec rebi ssh development web
+```
+
 
 ### Get envronment variables and status
 ```bash

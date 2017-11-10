@@ -9,5 +9,9 @@ module Rebi
     NoGit = Class.new(self)
     ServiceError = Class.new(self)
     EnvironmentInUpdating = Class.new(self)
+    EC2NoKey = Class.new(self)
+    EC2NoIP = Class.new(self)
+    KeyFileNotFound = Class.new(self)
+    SSH = Class.new(self)
   end
 end

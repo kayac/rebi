@@ -13,8 +13,9 @@ stages: #Required: Hash
         min: 1
         max: 1
       key_name: # Optional, if not set you cannot ssh into ec2 instances
-      service_role: role # Optional, default: aws-elasticbeanstalk-service-role
-      solution_stack_name: Ruby # Optional: default: "64bit Amazon Linux 2017.03 v2.4.1 running Ruby 2.3 (Puma)"
+      instance_profile: iam_profile # Optional, default: aws-elasticbeanstalk-service-role
+                                    # http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/iam-instanceprofile.html
+      solution_stack_name: Ruby # Optional: default: "64bit Amazon Linux 2017.09 v2.6.0 running Ruby 2.4 (Puma)"
       env_file: .env.development # Optional
       environment_variables: # Optional, nil will be deleted when update,
                              # Use `rebi get_env stage --from-config` to get env settings

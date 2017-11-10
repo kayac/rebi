@@ -37,6 +37,21 @@ module Rebi
       return Rebi::ConfigEnvironment.new(stg_name, env_name, stg[env_name] || {})
     end
 
+    def env_by_name name
+      data[:stages].each do |stg_name, stg_conf|
+        stg = stage stg_name
+        stg_conf.keys.each do |env_name|
+          env_conf = Rebi::ConfigEnvironment.new(stg_name, env_name, stg[env_name] || {})
+          return env_conf if env_conf.name == name
+        end
+      end
+      return nil
+    end
+
+    def stages
+      data[:stages].keys
+    end
+
     private
     def data
       @data ||= YAML::load(ERB.new(IO.read(config_file)).result).with_indifferent_access
