@@ -100,7 +100,7 @@ Use `rebi.opts` or `rebi.options` to get options config in .ebextensions
 # .ebextensions/00-envrionments.config
 option_settings:
   - option_name: KEY
-    value: <%= rebi.options[KEY] %>
+    value: <%= rebi.options.key %>
 ```
 
 ## Contributing
