@@ -14,6 +14,10 @@ module Rebi
 
     def authorize_ssh instance_id, &blk
       group_id = describe_instance(instance_id).security_groups.map(&:group_id).sort.first
+
+      my_ip = `dig +short myip.opendns.com @resolver1.opendns.com`.chomp
+      cidr_ip = my_ip.present? ? "#{my_ip}/32" : "0.0.0.0/0"
+
       begin
         log "Attempting to open port 22."
         client.authorize_security_group_ingress({
@@ -21,7 +25,7 @@ module Rebi
           ip_protocol: "tcp",
           to_port: 22,
           from_port: 22,
-          cidr_ip: "0.0.0.0/0"
+          cidr_ip: cidr_ip
           })
         log "SSH port 22 open."
 
@@ -41,7 +45,7 @@ module Rebi
             ip_protocol: "tcp",
             to_port: 22,
             from_port: 22,
-            cidr_ip: "0.0.0.0/0"
+            cidr_ip: cidr_ip
             })
         rescue Exception => e
           raise e
