@@ -36,7 +36,7 @@ module Rebi
         ebextensions.each do |ex_folder|
           Dir.glob("#{ex_folder}/*.config") do |fname|
             next unless (File.file?(fname) && files.include?(fname))
-            next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf.environment_variables).result)
+            next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf).result)
             basename = File.basename(fname)
             target = ".ebextensions/#{basename}"
             tmp_yaml = "#{tmp_folder}/#{basename}"

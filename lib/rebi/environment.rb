@@ -143,7 +143,11 @@ module Rebi
         end
         log ("Timeout") unless finished
       end
-      thread.join
+      begin
+        thread.join
+      rescue Interrupt
+        log("Interrupt")
+      end
       return thread
     end
 
@@ -160,9 +164,17 @@ module Rebi
       return self
     end
 
+    def instance_ids
+      resp = client.describe_environment_resources environment_name: self.name
+      resp.environment_resources.instances.map(&:id).sort
+    end
+
     def init version_label, opts={}
       log("Creating new environment")
       start_time = Time.now
+
+      self.check_instance_profile
+
       self.api_data = client.create_environment({
         application_name: config.app_name,
         cname_prefix: config.cname_prefix,
@@ -183,6 +195,7 @@ module Rebi
     end
 
     def update version_label, opts={}
+
       raise Rebi::Error::EnvironmentInUpdating.new(name) if in_updating?
       log("Start updating")
       start_time = Time.now
@@ -192,15 +205,19 @@ module Rebi
         environment_name: config.name,
         version_label: version_label,
         description: config.description,
-        option_settings: deploy_opts[:option_settings],
-        options_to_remove: deploy_opts[:options_to_remove],
       }
 
-      if opts[:source_only]
-        deploy_args.delete(:option_settings)
-        deploy_args.delete(:options_to_remove)
-      elsif opts[:settings_only]
-        deploy_args.delete(:version_label)
+      if opts[:include_settings] || opts[:settings_only]
+        deploy_args.merge({
+          option_settings: deploy_opts[:option_settings],
+          options_to_remove: deploy_opts[:options_to_remove],
+        })
+        deploy_args.delete(:version_label) if opts[:settings_only]
+      else
+        deploy_args.merge({
+          option_settings: deploy_opts[:env_only],
+          options_to_remove: deploy_opts[:options_to_remove],
+        })
       end
 
       self.api_data = client.update_environment(deploy_args)
@@ -267,19 +284,102 @@ module Rebi
     def gen_deploy_opts
       to_deploy = []
       to_remove = []
+      env_only = []
       config.opts_array.each do |o|
         o = o.deep_dup
-        if o[:namespace] == config.ns(:app_env) && o[:value].blank?
-          o.delete(:value)
-          to_remove << o
-          next
+
+        if o[:namespace] == config.ns(:app_env)
+          if o[:value].blank?
+            o.delete(:value)
+            to_remove << o
+            next
+          else
+            env_only << o
+          end
         end
         to_deploy << o
       end
       return {
         option_settings: to_deploy,
         options_to_remove:  to_remove,
+        env_only: env_only,
       }
+    end
+
+    def ssh instance_id
+      raise "Invalid instance_id" unless self.instance_ids.include?(instance_id)
+
+
+      instance  = Rebi.ec2.describe_instance instance_id
+
+      raise Rebi::Error::EC2NoKey.new unless instance.key_name.present?
+      raise Rebi::Error::EC2NoIP.new unless instance.public_ip_address.present?
+
+
+      Rebi.ec2.authorize_ssh instance_id do
+        user = "ec2-user"
+        key_file = "~/.ssh/#{instance.key_name}.pem"
+        raise Rebi::Error::KeyFileNotFound unless File.exists? File.expand_path(key_file)
+        cmd = "ssh -i #{key_file} #{user}@#{instance.public_ip_address}"
+        log cmd
+
+        begin
+          Subprocess.check_call(['ssh', '-i', key_file,  "#{user}@#{instance.public_ip_address}"])
+        rescue Subprocess::NonZeroExit => e
+          log e.message
+        end
+
+      end
+
+    end
+
+    def check_instance_profile
+      iam = Rebi.iam
+      begin
+        iam.get_instance_profile({
+          instance_profile_name: config.instance_profile
+          })
+        return true
+      rescue Aws::IAM::Errors::NoSuchEntity => e
+        raise e unless config.default_instance_profile?
+        self.create_defaut_profile
+      end
+    end
+
+    def create_defaut_profile
+      iam = Rebi.iam
+      profile = role = Rebi::ConfigEnvironment::DEFAULT_IAM_INSTANCE_PROFILE
+      iam.create_instance_profile({
+        instance_profile_name: profile
+        })
+
+      document = <<-JSON
+{
+  "Version":"2008-10-17",
+  "Statement":[
+      {
+        "Effect":"Allow",
+        "Principal":{
+          "Service":["ec2.amazonaws.com"]
+        },
+        "Action":["sts:AssumeRole"]
+      }
+  ]
+}
+      JSON
+      begin
+        iam.create_role({
+          role_name: role,
+          assume_role_policy_document: document
+          })
+      rescue Aws::IAM::Errors::EntityAlreadyExists
+      end
+
+      iam.add_role_to_instance_profile({
+        instance_profile_name: profile,
+        role_name: role
+        })
+
     end
 
     def self.create stage_name, env_name, version_label, client
@@ -291,7 +391,7 @@ module Rebi
     end
 
     # TODO
-    def self.all client=Rebi.client
+    def self.all app_name, client=Rebi.client
       client.describe_environments(application_name: app_name,
                                    include_deleted: false).environments
     end

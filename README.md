@@ -8,6 +8,7 @@ Deployment tool for Elasticbeanstalk
   - Multiple deployment
   - Deploy source code along with updating beanstalk options
   - Simple config
+  - Simple ssh
 
 ## Installation
 Or install it yourself as:
@@ -62,6 +63,12 @@ $ bundle exec rebi deploy development web
 $ bundle exec rebi deploy development
 ```
 
+### Ssh
+```bash
+$ bundle exec rebi ssh development web
+```
+
+
 ### Get envronment variables and status
 ```bash
 # Running envronment variables
@@ -78,13 +85,22 @@ $ bundle exec rebi --help
 ```
 
 ### ERB in ebextensions config
-Use `rebi_env` to get environment variables config in .ebextensions
+Use `rebi.env` to get environment variables config in .ebextensions
 ```yaml
 # Ex
 # .ebextensions/00-envrionments.config
 option_settings:
   - option_name: KEY
-    value: <%= rebi_env[KEY] %>
+    value: <%= rebi.env[KEY] %>
+```
+
+Use `rebi.opts` or `rebi.options` to get options config in .ebextensions
+```yaml
+# Ex
+# .ebextensions/00-envrionments.config
+option_settings:
+  - option_name: KEY
+    value: <%= rebi.options.key %>
 ```
 
 ## Contributing

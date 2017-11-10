@@ -12,6 +12,7 @@ require 'erb'
 require 'ostruct'
 require 'thread'
 require 'thwait'
+require 'subprocess'
 
 require 'rebi/erb_helper'
 require 'rebi/zip_helper'
@@ -20,6 +21,7 @@ require 'rebi/environment'
 require 'rebi/config'
 require 'rebi/config_environment'
 require 'rebi/error'
+require 'rebi/ec2'
 require 'rebi/version'
 
 Dotenv.load
@@ -36,6 +38,14 @@ module Rebi
 
   def client c=nil
     @@client = c || Aws::ElasticBeanstalk::Client.new
+  end
+
+  def ec2
+    @@ec2_client = Rebi::EC2.new
+  end
+
+  def iam
+    @@iam_client = Aws::IAM::Client.new
   end
 
   def app

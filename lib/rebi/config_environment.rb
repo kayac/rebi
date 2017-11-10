@@ -12,14 +12,15 @@ module Rebi
                 :instance_type,
                 :instance_num,
                 :key_name,
-                :service_role,
+                :instance_profile,
                 :ebextensions,
                 :solution_stack_name,
                 :cfg_file,
                 :env_file,
                 :environment_variables,
                 :option_settings,
-                :raw_conf
+                :raw_conf,
+                :options
 
     NAMESPACE ={
       app_env: "aws:elasticbeanstalk:application:environment",
@@ -38,6 +39,8 @@ module Rebi
       autoscaling_launch: [:InstanceType, :EC2KeyName],
       eb_env: [:ServiceRole],
     }
+
+    DEFAULT_IAM_INSTANCE_PROFILE = "aws-elasticbeanstalk-ec2-role"
 
     def initialize stage, env_name, env_conf={}
       @raw_conf = env_conf.with_indifferent_access
@@ -107,8 +110,17 @@ module Rebi
       get_opt(ns[:autoscaling_launch], :EC2KeyName)
     end
 
-    def service_role
-      get_opt(ns[:eb_env], :ServiceRole)
+    def instance_profile
+      get_opt(ns[:autoscaling_launch], :IamInstanceProfile)
+    end
+
+    def default_instance_profile?
+      self.instance_profile == DEFAULT_IAM_INSTANCE_PROFILE
+    end
+
+    def options
+      opts = (raw_conf[:options] || {}).with_indifferent_access
+      JSON.parse(opts.to_json, object_class: OpenStruct)
     end
 
     def cfg_file
@@ -133,7 +145,7 @@ module Rebi
     end
 
     def solution_stack_name
-      @solution_stack_name ||= raw_conf[:solution_stack_name] || "64bit Amazon Linux 2017.03 v2.4.1 running Ruby 2.3 (Puma)"
+      @solution_stack_name ||= raw_conf[:solution_stack_name] || "64bit Amazon Linux 2017.09 v2.6.0 running Ruby 2.4 (Puma)"
     end
 
     def platform_arn
@@ -201,7 +213,7 @@ module Rebi
       opt = set_opt_keyname opt
       opt = set_opt_instance_type opt
       opt = set_opt_instance_num opt
-      opt = set_opt_service_role opt
+      opt = set_opt_instance_profile opt
 
       return @opt = opt
     end
@@ -237,17 +249,18 @@ module Rebi
       return opt
     end
 
-    def set_opt_service_role opt
-      s_role = if raw_conf.key?(:service_role)
-        raw_conf[:service_role]
-      elsif role = get_raw_opt(ns[:eb_env], :ServiceRole)
+    def set_opt_instance_profile opt
+      s_role = if raw_conf.key?(:instance_profile)
+        raw_conf[:instance_profile]
+      elsif role = get_raw_opt(ns[:autoscaling_launch], :IamInstanceProfile)
         role
       else
-        'aws-elasticbeanstalk-service-role'
+        DEFAULT_IAM_INSTANCE_PROFILE
       end
+
       if s_role.present?
-        opt[ns[:eb_env]].merge!({
-          ServiceRole: s_role,
+        opt[ns[:autoscaling_launch]].merge!({
+          IamInstanceProfile: s_role,
         }.with_indifferent_access)
       end
       return opt
