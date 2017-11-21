@@ -208,13 +208,13 @@ module Rebi
       }
 
       if opts[:include_settings] || opts[:settings_only]
-        deploy_args.merge({
+        deploy_args.merge!({
           option_settings: deploy_opts[:option_settings],
           options_to_remove: deploy_opts[:options_to_remove],
         })
         deploy_args.delete(:version_label) if opts[:settings_only]
       else
-        deploy_args.merge({
+        deploy_args.merge!({
           option_settings: deploy_opts[:env_only],
           options_to_remove: deploy_opts[:options_to_remove],
         })

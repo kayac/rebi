@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rebi (0.2.0)
+    rebi (0.2.1)
       activesupport (~> 5.0)
       aws-sdk (~> 2.10)
       colorize (~> 0.8)
