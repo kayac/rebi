@@ -176,18 +176,17 @@ module Rebi
       self.check_instance_profile
 
       self.api_data = client.create_environment({
-        application_name: config.app_name,
-        cname_prefix: config.cname_prefix,
-        environment_name: config.name,
-        version_label: version_label,
-        tier: config.tier,
-        description: config.description,
-        option_settings: config.opts_array,
-      }.merge(if(config.platform_arn)
-        { platform_arn: config.platform_arn}
-      else
-        { solution_stack_name: config.solution_stack_name}
-      end))
+          application_name: config.app_name,
+          environment_name: config.name,
+          version_label: version_label,
+          tier: config.tier,
+          description: config.description,
+          option_settings: config.opts_array,
+        }.merge(
+          config.worker? ? {} : { cname_prefix: config.cname_prefix }
+        ).merge(config.platform_arn ? { platform_arn: config.platform_arn } : { solution_stack_name: config.solution_stack_name })
+      )
+
       request_id = events(start_time).select do |e|
         e.message.match(response_msgs('event.createstarting'))
       end.map(&:request_id).first
