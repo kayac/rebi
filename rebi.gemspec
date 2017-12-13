@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.executables = ["rebi"]
 
   s.add_dependency "rubyzip", "~> 1.2"
-  s.add_dependency "aws-sdk", "~> 2.10"
+  s.add_dependency "aws-sdk", ">= 2.10"
   s.add_dependency "dotenv", "~> 2.1"
   s.add_dependency "colorize", "~> 0.8"
   s.add_dependency "activesupport", "~> 5.0"
