@@ -19,11 +19,18 @@ Gem::Specification.new do |s|
   s.executables = ["rebi"]
 
   s.add_dependency "rubyzip", "~> 1.2"
-  s.add_dependency "aws-sdk", ">= 2.10"
+
+  # s.add_dependency 'aws-sdk', "~> 3.0"
+  s.add_dependency 'aws-sdk-ec2', "~> 1.0"
+  s.add_dependency 'aws-sdk-s3', "~> 1.0"
+  s.add_dependency 'aws-sdk-elasticbeanstalk', "~> 1.0"
+  s.add_dependency 'aws-sdk-iam', "~> 1.0"
+
   s.add_dependency "dotenv", "~> 2.1"
   s.add_dependency "colorize", "~> 0.8"
   s.add_dependency "activesupport", "~> 5.0"
   s.add_dependency "commander", "~> 4.4"
   s.add_dependency "subprocess", "~> 1.3"
 
+  s.add_development_dependency "byebug", "~> 9"
 end

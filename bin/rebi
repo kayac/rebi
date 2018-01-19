@@ -4,6 +4,13 @@ require 'rubygems'
 require 'commander/import'
 require 'rebi'
 
+# For debug
+begin
+  require 'byebug'
+rescue LoadError
+
+end
+
 REBI_PATH = File.join(File.dirname(File.expand_path(__FILE__)), "..")
 
 program :name, 'Rebi'
@@ -15,6 +22,11 @@ global_option('-c', '--config FILE', 'Load config data for your commands to use'
   Rebi.config.reload!
 end
 
+global_option('--profile STRING', 'Aws profile') do |profile|
+  Rebi.config.aws_profile = profile
+  Rebi.config.reload!
+end
+
 command :deploy do |c|
   c.syntax = 'rebi deploy stage [env_name] [--options]'
   c.description = 'Deploy single or multiple ElasticBeanstalk environments'
@@ -22,6 +34,8 @@ command :deploy do |c|
   c.example 'Deploy all environments in development', 'rebi deploy development'
   c.option '--include-settings', 'Deploy source and settings'
   c.option '--settings-only', 'Deploy option_settings and environment variables only'
+  c.option '--staged', 'Deploy files staged in git rather than the HEAD commit'
+  c.option '-y', '--yes', 'Skip confirmation'
   c.action do |args, options|
     stage, env_name = args
     raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
@@ -29,7 +43,7 @@ command :deploy do |c|
     if env_name.present?
       Rebi.app.deploy stage, env_name, opts
     else
-      if agree("Do you want to deploy all environments in #{stage} stage?(Y/n)")
+      if options.yes || agree("Do you want to deploy all environments in #{stage} stage?(Y/n)")
         Rebi.log("Preparing for deployment")
         Rebi.app.deploy stage, nil, opts
       end
@@ -72,12 +86,13 @@ end
 command :terminate do |c|
   c.syntax = 'rebi terminate stage env_name'
   c.description = 'Terminate environment'
+  c.option '-y', '--yes', 'Skip confirmation'
   c.action do |args, options|
     stage, env_name = args
     raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
     raise Rebi::Error.new("Env name cannot be nil") if env_name.blank?
     env_conf = Rebi.config.environment(stage, env_name)
-    if ask("Type '#{env_conf.name}' to confirm termination") == env_conf.name
+    if options.yes || agree("Do you want to terminate '#{env_conf.name}' environment?(Y/n)")
       Rebi.app.terminate! stage, env_name
     end
   end
@@ -98,7 +113,6 @@ command :ssh do |c|
   c.action do |args, options|
     stage, env_name = args
     raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
-    raise Rebi::Error.new("Env name cannot be nil") if env_name.blank?
     Rebi.app.ssh_interaction stage, env_name, options.__hash__
   end
 end
