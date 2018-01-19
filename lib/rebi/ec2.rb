@@ -1,10 +1,16 @@
 module Rebi
   class EC2
 
+    include Rebi::Log
+
     attr_reader :client
 
-    def initialize client=Aws::EC2::Client.new
+    def initialize client
       @client = client
+    end
+
+    def log_label
+      "EC2"
     end
 
     def describe_instance instance_id
@@ -52,8 +58,5 @@ module Rebi
         end
     end
 
-    def log mes
-      Rebi.log(mes, "EC2")
-    end
   end
 end

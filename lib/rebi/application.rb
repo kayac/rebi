@@ -1,11 +1,11 @@
 module Rebi
   class Application
+    include Rebi::Log
     attr_reader :app, :app_name, :client, :s3_client
-    def initialize app, client
+    def initialize app, client=Rebi.eb
       @app = app
       @app_name = app.application_name
       @client = client
-      @s3_client = Aws::S3::Client.new
     end
 
     def bucket_name
@@ -16,18 +16,18 @@ module Rebi
       Rebi::Environment.all app_name
     end
 
+    def log_label
+      app_name
+    end
+
     def deploy stage_name, env_name=nil, opts={}
       return deploy_stage(stage_name, opts) if env_name.blank?
       env = get_environment stage_name, env_name
-      app_version = create_app_version env
       begin
-        req_id = env.deploy app_version, opts
-        env.watch_request req_id if req_id
-      rescue Rebi::Error::EnvironmentInUpdating => e
-        Rebi.log("Environment in updating", env.name)
-        raise e
+        env.deploy opts
+      rescue Interrupt
+        log("Interrupt")
       end
-      req_id
     end
 
     def deploy_stage stage_name, opts={}
@@ -38,9 +38,9 @@ module Rebi
           begin
             deploy stage_name, env_name, opts
           rescue Exception => e
-            Rebi.log(e.message, "ERROR")
-            e.backtrace.each do |m|
-              Rebi.log(m, "ERROR")
+            error(e.message)
+            opts[:trace] && e.backtrace.each do |m|
+              error(m)
             end
           end
         end
@@ -61,11 +61,11 @@ module Rebi
       env = get_environment stage_name, env_name
       env_vars = from_config ? env.config.environment_variables : env.environment_variables
 
-      Rebi.log("#{from_config ? "Config" : "Current"} environment variables", env.name)
+      log("#{from_config ? "Config" : "Current"} environment variables")
       env_vars.each do |k,v|
-        Rebi.log("#{k}=#{v}")
+        log("#{k}=#{v}")
       end
-      Rebi.log("--------------------------------------", env.name)
+      log("--------------------------------------")
     end
 
     def print_environment_status stage_name, env_name
@@ -79,11 +79,11 @@ module Rebi
 
       env = get_environment stage_name, env_name
       env.check_created!
-      Rebi.log("--------- CURRENT STATUS -------------", env.name)
-      Rebi.log("id: #{env.id}", env.name)
-      Rebi.log("Status: #{env.status}", env.name)
-      Rebi.log("Health: #{env.health}", env.name)
-      Rebi.log("--------------------------------------", env.name)
+      log("--------- CURRENT STATUS -------------")
+      log("id: #{env.id}")
+      log("Status: #{env.status}")
+      log("Health: #{env.health}")
+      log("--------------------------------------")
     end
 
     def terminate! stage_name, env_name
@@ -92,36 +92,10 @@ module Rebi
         req_id = env.terminate!
         ThreadsWait.all_waits(env.watch_request req_id) if req_id
       rescue Rebi::Error::EnvironmentInUpdating => e
-        Rebi.log("Environment in updating", env.name)
+        log("Environment in updating")
         raise e
       end
     end
-
-    def create_app_version env
-      start = Time.now.utc
-      source_bundle = Rebi::ZipHelper.new.gen(env.config)
-      version_label = source_bundle[:label]
-      key = "#{app_name}/#{version_label}.zip"
-      Rebi.log("Uploading source bundle: #{version_label}.zip", env.config.name)
-      s3_client.put_object(
-        bucket: bucket_name,
-        key: key,
-        body: source_bundle[:file].read
-        )
-      Rebi.log("Creating app version: #{version_label}", env.config.name)
-      client.create_application_version({
-        application_name: app_name,
-        description: source_bundle[:message],
-        version_label: version_label,
-        source_bundle: {
-          s3_bucket: bucket_name,
-          s3_key: key
-          }
-        })
-      Rebi.log("App version was created in: #{Time.now.utc - start}s", env.config.name)
-      return version_label
-    end
-
 
     def print_list
       others = []
@@ -135,35 +109,34 @@ module Rebi
       end
 
       configed.each do |stg, envs|
-        Rebi.log "-------------"
-        Rebi.log "#{stg.camelize}:"
-        envs.each do |k, v|
-          Rebi.log "\t#{k.camelize}: #{v}"
+        log h1("#{stg.camelize}")
+        envs.each do |kname, env_name|
+          env = get_environment stg, kname
+          log "\t[#{kname.camelize}] #{env.name} #{h2(env.status)} #{hstatus(env.health)}"
         end
       end
 
       if others.present?
-        Rebi.log "-------------"
-        Rebi.log "Others:"
+        log h1("Others")
         others.each do |e|
-          Rebi.log "\t- #{e}"
+          log "\t- #{e}"
         end
       end
     end
 
     def ssh_interaction stage_name, env_name, opts={}
+      env_name = Rebi.config.stage(stage_name).keys.first unless env_name
       env = get_environment stage_name, env_name
       instance_ids = env.instance_ids
       return if instance_ids.empty?
 
       instance_ids.each.with_index do |i,idx|
-        Rebi.log "#{idx+1}) #{i}"
+        log "#{idx+1}) #{i}"
       end
 
       instance_id = instance_ids.first
 
       if instance_ids.count != 1 && opts[:select]
-
 
         idx = 0
         while idx < 1 || idx > instance_ids.count
@@ -172,7 +145,7 @@ module Rebi
         instance_id = instance_ids[idx - 1]
       end
 
-      Rebi.log "Preparing to ssh into [#{instance_id}]"
+      log "Preparing to ssh into [#{instance_id}]"
       env.ssh instance_id
     end
 
@@ -181,7 +154,7 @@ module Rebi
     end
 
     def self.client
-      Rebi.client || Aws::ElasticBeanstalk::Client.new
+      Rebi.eb
     end
 
     def self.get_application app_name

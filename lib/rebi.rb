@@ -1,5 +1,8 @@
 require 'active_support/all'
-require 'aws-sdk'
+require 'aws-sdk-ec2'
+require 'aws-sdk-s3'
+require 'aws-sdk-elasticbeanstalk'
+require 'aws-sdk-iam'
 require 'colorized_string'
 require 'singleton'
 require 'yaml'
@@ -13,7 +16,9 @@ require 'ostruct'
 require 'thread'
 require 'thwait'
 require 'subprocess'
+require 'pathspec'
 
+require 'rebi/log'
 require 'rebi/erb_helper'
 require 'rebi/zip_helper'
 require 'rebi/application'
@@ -24,11 +29,12 @@ require 'rebi/error'
 require 'rebi/ec2'
 require 'rebi/version'
 
-Dotenv.load
+# Dotenv.load
 
 module Rebi
-  extend self
+  include Rebi::Log
 
+  extend self
   attr_accessor :config_file
   @config_file = "config/rebi.yml"
 
@@ -36,16 +42,20 @@ module Rebi
     Dir.pwd
   end
 
-  def client c=nil
-    @@client = c || Aws::ElasticBeanstalk::Client.new
+  def eb c=nil
+    @@eb = Aws::ElasticBeanstalk::Client.new
   end
 
   def ec2
-    @@ec2_client = Rebi::EC2.new
+    @@ec2_client = Rebi::EC2.new Aws::EC2::Client.new
   end
 
   def iam
     @@iam_client = Aws::IAM::Client.new
+  end
+
+  def s3
+    @@s3_client = Aws::S3::Client.new
   end
 
   def app
@@ -59,18 +69,6 @@ module Rebi
 
   def reload!
     config.reload!
-  end
-
-  def log mes, prefix=nil
-    puts "#{prefix ? "#{colorize_prefix(prefix)}: " : ""}#{mes}"
-  end
-
-  COLORS = [:red, :green, :yellow, :blue, :magenta, :cyan, :white]
-  def colorize_prefix(prefix)
-    h = prefix.chars.inject(0) do |m, c|
-      m + c.ord
-    end
-    return ColorizedString[prefix].colorize(COLORS[h % COLORS.count])
   end
 
 end

@@ -2,11 +2,13 @@
 Deployment tool for Elasticbeanstalk
 
 # Features
-  - Switchable  + multiple ebextensions folder
+  - Switchable + multiple ebextensions folder
+  - Switchable + ERB Supported Dockerrun.aws.json
   - Support erb in ebextension config files
   - Support env_file for environment variables
   - Multiple deployment
   - Deploy source code along with updating beanstalk options
+  - Hook commands before and after deploy
   - Simple config
   - Simple ssh
 
@@ -17,28 +19,17 @@ $ gem install rebi
 ```
 
 ## Usage
-How to use my plugin.
-
-### AWS authentication
-Rebi uses environment variables to get aws credentials
-To set environment variables use `export` or `.env` file
-```bash
-# Use access key
-export AWS_ACCESS_KEY_ID=xxxxx
-export AWS_SECRET_ACCESS_KEY=xxxxxx
-```
-Or
-```bash
-# Use profile
-export AWS_PROFILE=xxxxx
-```
-
-Refer http://docs.aws.amazon.com/sdkforruby/api/Aws/ElasticBeanstalk/Client.html for other settings
 
 ### Yaml config
-Default config file is `config/rebi.yml` use `-c` to switch
+Default config file is `.rebi.yml` use `-c` to switch
 ```yaml
 app_name: app-name
+profile: aws_profile # if use profile, can overwrite this by command option --profile
+
+# if use key/secret credentials(If you dont want to commit credentials to version control system use environment variables instead (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
+aws_key: aws_key
+aws_secret: aws_secret
+
 stages:
   development:
     web:
@@ -47,9 +38,9 @@ stages:
       ebextensions: "web-ebextensions"
 ```
 
-For other configs( key_name, instance_type, instance_num, service_role,...), please refer sample config
+For other configs(key_name, instance_type, instance_num, service_role,...), please refer sample config
 ```bash
-$ bundle exec rebi sample > rebi.yml
+$ bundle exec rebi sample > .rebi.yml
 ```
 
 ### Deploy

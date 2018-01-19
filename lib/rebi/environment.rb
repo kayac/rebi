@@ -1,6 +1,8 @@
 module Rebi
   class Environment
 
+    include Rebi::Log
+
     attr_reader :stage_name,
                 :env_name,
                 :app_name,
@@ -8,6 +10,7 @@ module Rebi
                 :config
 
     attr_accessor :client,
+                  :s3_client,
                   :api_data
 
 
@@ -41,13 +44,18 @@ module Rebi
         'ec2.sshalreadyopen': 'the specified rule "peer: 0.0.0.0/0, TCP, from port: 22, to port: 22,',
     }
 
-    def initialize stage_name, env_name, client=Rebi.client
+    def initialize stage_name, env_name, client=Rebi.eb
       @stage_name = stage_name
       @env_name = env_name
       @client = client
+      @s3_client = Rebi.s3
       @config = Rebi.config.environment(stage_name, env_name)
       @app_name = @config.app_name
       @api_data
+    end
+
+    def bucket_name
+      @bucket_name ||= client.create_storage_location.s3_bucket
     end
 
     def name
@@ -128,6 +136,8 @@ module Rebi
     end
 
     def watch_request request_id
+      return unless request_id
+      log h1("WATCHING REQUEST [#{request_id}]")
       check_created!
       start = Time.now
       finished = false
@@ -169,23 +179,39 @@ module Rebi
       resp.environment_resources.instances.map(&:id).sort
     end
 
+    def create_app_version opts={}
+      return if opts[:settings_only]
+      start = Time.now.utc
+      source_bundle = Rebi::ZipHelper.new.gen(self.config, opts)
+      version_label = source_bundle[:label]
+      key = "#{app_name}/#{version_label}.zip"
+      log("Uploading source bundle: #{version_label}.zip")
+      s3_client.put_object(
+        bucket: bucket_name,
+        key: key,
+        body: source_bundle[:file].read
+        )
+      log("Creating app version: #{version_label}")
+      client.create_application_version({
+        application_name: app_name,
+        description: source_bundle[:message],
+        version_label: version_label,
+        source_bundle: {
+          s3_bucket: bucket_name,
+          s3_key: key
+          }
+        })
+      log("App version was created in: #{Time.now.utc - start}s")
+      return version_label
+    end
+
     def init version_label, opts={}
-      log("Creating new environment")
+      log h2("Start creating new environment")
       start_time = Time.now
 
       self.check_instance_profile
 
-      self.api_data = client.create_environment({
-          application_name: config.app_name,
-          environment_name: config.name,
-          version_label: version_label,
-          tier: config.tier,
-          description: config.description,
-          option_settings: config.opts_array,
-        }.merge(
-          config.worker? ? {} : { cname_prefix: config.cname_prefix }
-        ).merge(config.platform_arn ? { platform_arn: config.platform_arn } : { solution_stack_name: config.solution_stack_name })
-      )
+      self.api_data = client.create_environment _create_args(version_label, opts)
 
       request_id = events(start_time).select do |e|
         e.message.match(response_msgs('event.createstarting'))
@@ -195,31 +221,11 @@ module Rebi
 
     def update version_label, opts={}
 
-      raise Rebi::Error::EnvironmentInUpdating.new(name) if in_updating?
-      log("Start updating")
+      raise Rebi::Error::EnvironmentInUpdating.new("Environment is in updating: #{name}") if in_updating?
+      log h2("Start updating")
       start_time = Time.now
-      deploy_opts = gen_deploy_opts
-      deploy_args = {
-        application_name: config.app_name,
-        environment_name: config.name,
-        version_label: version_label,
-        description: config.description,
-      }
 
-      if opts[:include_settings] || opts[:settings_only]
-        deploy_args.merge!({
-          option_settings: deploy_opts[:option_settings],
-          options_to_remove: deploy_opts[:options_to_remove],
-        })
-        deploy_args.delete(:version_label) if opts[:settings_only]
-      else
-        deploy_args.merge!({
-          option_settings: deploy_opts[:env_only],
-          options_to_remove: deploy_opts[:options_to_remove],
-        })
-      end
-
-      self.api_data = client.update_environment(deploy_args)
+      self.api_data = client.update_environment(_update_args(version_label, opts))
 
       request_id = events(start_time).select do |e|
         e.message.match(response_msgs('event.updatestarting'))
@@ -228,18 +234,23 @@ module Rebi
       return request_id
     end
 
-    def deploy version_label, opts={}
+    def deploy opts={}
+      _run_hooks :pre
+      version_label = create_app_version opts
       request_id = if created?
         update version_label, opts
       else
         init version_label, opts
       end
+      log h3("DEPLOYING")
+      _run_hooks :post
+      watch_request request_id
       return request_id
     end
 
     def terminate!
       check_created
-      log("Start terminating")
+      log h2("Start terminating")
       client.terminate_environment({
         environment_name: name,
         environment_id: id,
@@ -252,8 +263,8 @@ module Rebi
       return request_id
     end
 
-    def log mes
-      Rebi.log(mes, name)
+    def log_label
+      name
     end
 
     def success_message? mes
@@ -278,31 +289,6 @@ module Rebi
       end
 
       return false
-    end
-
-    def gen_deploy_opts
-      to_deploy = []
-      to_remove = []
-      env_only = []
-      config.opts_array.each do |o|
-        o = o.deep_dup
-
-        if o[:namespace] == config.ns(:app_env)
-          if o[:value].blank?
-            o.delete(:value)
-            to_remove << o
-            next
-          else
-            env_only << o
-          end
-        end
-        to_deploy << o
-      end
-      return {
-        option_settings: to_deploy,
-        options_to_remove:  to_remove,
-        env_only: env_only,
-      }
     end
 
     def ssh instance_id
@@ -390,15 +376,96 @@ module Rebi
     end
 
     # TODO
-    def self.all app_name, client=Rebi.client
+    def self.all app_name, client=Rebi.eb
       client.describe_environments(application_name: app_name,
                                    include_deleted: false).environments
     end
 
-    def self.get stage_name, env_name, client=Rebi.client
+    def self.get stage_name, env_name, client=Rebi.eb
       env = new stage_name, env_name, client
       return env.created? ? env : nil
     end
 
+    private
+
+    def _create_args version_label, opts={}
+      args = {
+          application_name: config.app_name,
+          environment_name: config.name,
+          version_label: version_label,
+          tier: config.tier,
+          description: config.description,
+          option_settings: config.opts_array,
+        }
+
+      args.merge!(cname_prefix: config.cname_prefix) if config.cname_prefix
+
+      args.merge!(config.platform_arn ? { platform_arn: config.platform_arn } : { solution_stack_name: config.solution_stack_name })
+      return args
+    end
+
+    def _update_args version_label, opts={}
+      deploy_opts = _gen_deploy_opts
+
+      args = {
+        application_name: config.app_name,
+        environment_name: config.name,
+        description: config.description,
+      }
+
+      args.merge!(version_label: version_label) if version_label
+
+      if opts[:include_settings] || opts[:settings_only]
+        args.merge!({
+          option_settings: deploy_opts[:option_settings],
+          options_to_remove: deploy_opts[:options_to_remove],
+        })
+        args.delete(:version_label) if opts[:settings_only]
+      else
+        args.merge!({
+          option_settings: deploy_opts[:env_only],
+          options_to_remove: deploy_opts[:options_to_remove],
+        })
+      end
+
+      return args
+    end
+
+    def _gen_deploy_opts
+      to_deploy = []
+      to_remove = []
+      env_only = []
+      config.opts_array.each do |o|
+        o = o.deep_dup
+
+        if o[:namespace] == config.ns(:app_env)
+          if o[:value].blank?
+            o.delete(:value)
+            to_remove << o
+            next
+          else
+            env_only << o
+          end
+        end
+        to_deploy << o
+      end
+      return {
+        option_settings: to_deploy,
+        options_to_remove:  to_remove,
+        env_only: env_only,
+      }
+    end
+
+    def _run_hooks type
+      if hooks = config.hooks[type]
+        log h1("RUNNING #{type.upcase} HOOKS")
+        hooks.each do |cmd|
+          log h4(cmd)
+          system "#{cmd} 2>&1"
+          raise "Command failed" unless $?.success?
+        end
+        log h1("#{type.upcase} HOOKS FINISHED!!!")
+      end
+    end
   end
 end

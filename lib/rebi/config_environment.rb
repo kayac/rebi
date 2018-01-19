@@ -61,7 +61,7 @@ module Rebi
     end
 
     def cname_prefix
-      @cname_prefix ||= raw_conf[:cname_prefix] || "#{name}-#{stage}"
+      self.worker? ? nil : @cname_prefix || raw_conf[:cname_prefix]
     end
 
     def tier
@@ -93,6 +93,10 @@ module Rebi
 
     def worker?
       tier[:name] == "Worker" ? true : false
+    end
+
+    def web?
+      !worker?
     end
 
     def instance_type
@@ -133,6 +137,10 @@ module Rebi
 
     def env_file
       @env_file ||= raw_conf[:env_file]
+    end
+
+    def dockerrun
+      raw_conf[:dockerrun]
     end
 
     def cfg
@@ -220,6 +228,27 @@ module Rebi
 
     def ns key=nil
       key.present? ? NAMESPACE[key.to_sym] : NAMESPACE
+    end
+
+    def hooks
+      return @hooks if @hooks
+
+      @hooks = {}.with_indifferent_access
+
+      [:pre, :post].each do |type|
+        next unless h = raw_conf[:hooks][type]
+        @hooks[type] = h.is_a?(Array) ? h : [h]
+      end
+
+      return @hooks
+    end
+
+    def pre_hooks
+      hooks[:pre]
+    end
+
+    def post_hooks
+      hooks[:post]
     end
 
     private
