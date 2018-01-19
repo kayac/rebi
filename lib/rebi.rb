@@ -16,6 +16,7 @@ require 'ostruct'
 require 'thread'
 require 'thwait'
 require 'subprocess'
+require 'pathspec'
 
 require 'rebi/log'
 require 'rebi/erb_helper'
