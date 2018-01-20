@@ -56,8 +56,9 @@ module Rebi
       tmp_folder = Dir.mktmpdir
       Zip::File.open(tmp_file.path) do |z|
         ebextensions.each do |ex_folder|
+
+          z.remove_folder ex_folder unless ex_folder == ".ebextension"
           Dir.glob("#{ex_folder}/*.config") do |fname|
-            z.remove_folder ex_folder unless ex_folder == ".ebextension"
             next unless File.file?(fname)
             next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf).result)
             basename = File.basename(fname)
@@ -70,7 +71,6 @@ module Rebi
             z.add target, tmp_yaml
           end
         end
-
         dockerrun_file = env_conf.dockerrun || "Dockerrun.aws.json"
 
         if File.exists?(dockerrun_file)
@@ -87,6 +87,7 @@ module Rebi
       end
 
       FileUtils.rm_rf tmp_folder
+
 
       log("Zip was created in: #{Time.now - start}s", env_conf.name)
       return {
