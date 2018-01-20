@@ -233,10 +233,13 @@ module Rebi
     def hooks
       return @hooks if @hooks
 
-      @hooks = {}.with_indifferent_access
+      @hooks = {
+        pre: [],
+        post: [],
+      }.with_indifferent_access
 
       [:pre, :post].each do |type|
-        next unless h = raw_conf[:hooks][type]
+        next unless h = raw_conf[:hooks] && raw_conf[:hooks][type]
         @hooks[type] = h.is_a?(Array) ? h : [h]
       end
 

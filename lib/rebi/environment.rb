@@ -457,7 +457,7 @@ module Rebi
     end
 
     def _run_hooks type
-      if hooks = config.hooks[type]
+      if (hooks = config.hooks[type]).present?
         log h1("RUNNING #{type.upcase} HOOKS")
         hooks.each do |cmd|
           log h4(cmd)
