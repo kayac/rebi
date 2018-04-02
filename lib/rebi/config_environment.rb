@@ -42,6 +42,16 @@ module Rebi
 
     DEFAULT_IAM_INSTANCE_PROFILE = "aws-elasticbeanstalk-ec2-role"
 
+
+    DEFAULT_CONFIG = {
+      tier: "web",
+      instance_type: "t2.micro",
+      instance_num: {
+        min: 1,
+        max: 1,
+      }
+    }
+
     def initialize stage, env_name, env_conf={}
       @raw_conf = env_conf.with_indifferent_access
       @stage = stage.to_sym
@@ -50,6 +60,11 @@ module Rebi
 
     def name
       @name ||= raw_conf[:name] || "#{env_name}-#{stage}"
+    end
+
+
+    def name=n
+      raw_conf[:name] ||= @name = n
     end
 
     def app_name
@@ -71,7 +86,7 @@ module Rebi
       elsif cfg.present? && cfg[:EnvironmentTier].present? && cfg[:EnvironmentTier][:Name].present?
         cfg[:EnvironmentTier][:Name] == "Worker" ? :worker : :web
       else
-        :web
+        DEFAULT_CONFIG[:tier].to_sym
       end
 
       @tier = if t == :web
@@ -128,6 +143,7 @@ module Rebi
     end
 
     def cfg_file
+      return nil
       @cfg_file ||= raw_conf[:cfg_file]
       return @cfg_file if @cfg_file.blank?
       return @cfg_file if Pathname.new(@cfg_file).absolute?
@@ -153,7 +169,7 @@ module Rebi
     end
 
     def solution_stack_name
-      @solution_stack_name ||= raw_conf[:solution_stack_name] || "64bit Amazon Linux 2017.09 v2.6.0 running Ruby 2.4 (Puma)"
+      @solution_stack_name ||= raw_conf[:solution_stack_name] || "64bit Amazon Linux 2017.09 v2.6.5 running Ruby 2.4 (Puma)"
     end
 
     def platform_arn
@@ -169,6 +185,11 @@ module Rebi
         [".ebextensions"]
       end
     end
+
+    def ebignore
+      return @ebignore ||= raw_conf[:ebignore] || ".ebignore"
+    end
+
 
     def raw_environment_variables
       raw_conf[:environment_variables] || {}

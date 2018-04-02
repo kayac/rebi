@@ -171,6 +171,7 @@ module Rebi
     end
 
     def self.get_or_create_application app_name
+      raise "App name cannot be nil" if app_name.blank?
       begin
         return get_application app_name
       rescue Error::ApplicationNotFound

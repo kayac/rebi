@@ -3,10 +3,16 @@ module Rebi
 
     include Rebi::Log
 
-    EB_IGNORE = ".ebignore"
+    attr_reader :env_conf, :opts
 
-    def initialize
+    def initialize env_conf,opts={}
+      @env_conf = env_conf
+      @opts = opts
       # raise Rebi::Error::NoGit.new("Not a git repository") unless git?
+    end
+
+    def staged?
+      opts[:staged]
     end
 
     def git?
@@ -18,13 +24,13 @@ module Rebi
       `git ls-files 2>&1`.split("\n")
     end
 
-    def raw_zip_archive opts={}
+    def raw_zip_archive
       tmp_file = Tempfile.new("git_archive")
       if !git? || ebignore?
         Zip::File.open(tmp_file.path, Zip::File::CREATE) do |z|
           spec = ebignore_spec
           Dir.glob("**/*").each do |f|
-            next if ebignore_spec.match f
+            next if spec.match f
             if File.directory?(f)
               z.mkdir f unless z.find_entry f
             else
@@ -33,7 +39,7 @@ module Rebi
           end
         end
       else
-        commit_id = opts[:staged] ? `git write-tree`.chomp : "HEAD"
+        commit_id = staged? ? `git write-tree`.chomp : "HEAD"
         system "git archive --format=zip #{commit_id} > #{tmp_file.path}"
       end
       return tmp_file
@@ -48,27 +54,35 @@ module Rebi
     end
 
     # Create zip archivement
-    def gen env_conf,opts={}
+    def gen
       log("Creating zip archivement", env_conf.name)
       start = Time.now
       ebextensions = env_conf.ebextensions
-      tmp_file = raw_zip_archive opts
+      tmp_file = raw_zip_archive
       tmp_folder = Dir.mktmpdir
       Zip::File.open(tmp_file.path) do |z|
         ebextensions.each do |ex_folder|
-
-          z.remove_folder ex_folder unless ex_folder == ".ebextension"
-          Dir.glob("#{ex_folder}/*.config") do |fname|
+          z.remove_folder ex_folder unless ex_folder == ".ebextensions"
+          Dir.glob("#{ex_folder}/*.config*") do |fname|
             next unless File.file?(fname)
-            next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf).result)
+
             basename = File.basename(fname)
-            target = ".ebextensions/#{basename}"
-            tmp_yaml = "#{tmp_folder}/#{basename}"
-            File.open(tmp_yaml, 'w') do |f|
-              f.write y.to_yaml
+            source_file = fname
+
+            if fname.match(/\.erb$/)
+              next unless y = YAML::load(ErbHelper.new(File.read(fname), env_conf).result)
+              basename = basename.gsub(/\.erb$/,'')
+              source_file = "#{tmp_folder}/#{basename}"
+              File.open(source_file, 'w') do |f|
+                f.write y.to_yaml
+              end
             end
+
+            target = ".ebextensions/#{basename}"
+
             z.remove target if z.find_entry target
-            z.add target, tmp_yaml
+            z.remove fname if z.find_entry fname
+            z.add target, source_file
           end
         end
         dockerrun_file = env_conf.dockerrun || "Dockerrun.aws.json"
@@ -87,8 +101,6 @@ module Rebi
       end
 
       FileUtils.rm_rf tmp_folder
-
-
       log("Zip was created in: #{Time.now - start}s", env_conf.name)
       return {
         label: Time.now.strftime("app_#{env_conf.name}_#{version_label}_%Y%m%d_%H%M%S"),
@@ -99,7 +111,7 @@ module Rebi
 
     def ebignore_spec
       if ebignore?
-        path_spec = PathSpec.from_filename(EB_IGNORE)
+        path_spec = PathSpec.from_filename(ebignore)
         path_spec.add(".git")
         return path_spec
       else
@@ -108,9 +120,12 @@ module Rebi
     end
 
     def ebignore?
-      File.exist?(EB_IGNORE)
+      File.exist?(ebignore)
     end
 
+    def ebignore
+      env_conf.ebignore
+    end
   end
 end
 

@@ -2,6 +2,7 @@ module Rebi
   class Config
     include Singleton
 
+    attr_accessor :data
     def initialize
       reload!
     end
@@ -41,12 +42,16 @@ module Rebi
       data[:app_name]
     end
 
+    def app_name=name
+      data[:app_name] = name
+    end
+
     def app_description
       data[:app_description] || "Created via rebi"
     end
 
     def stage stage
-      data[:stages][stage] || raise(Rebi::Error::ConfigNotFound.new("Stage: #{stage}"))
+      data[:stages] && data[:stages][stage] || raise(Rebi::Error::ConfigNotFound.new("Stage: #{stage}"))
     end
 
     def timeout
@@ -74,14 +79,26 @@ module Rebi
       data[:stages].keys
     end
 
-    private
     def data
-      @data ||= YAML::load(ERB.new(IO.read(config_file)).result).with_indifferent_access
-      raise Rebi::Error::ConfigInvalid.new("app_name cannot be nil") if @data[:app_name].blank?
-      raise Rebi::Error::ConfigInvalid.new("stages cannot be nil") if @data[:stages].blank?
+      return @data unless @data.nil?
+      begin
+        @data = YAML::load(ERB.new(IO.read(config_file)).result).with_indifferent_access
+      rescue Errno::ENOENT
+        @data = {}.with_indifferent_access
+      end
       return @data
     end
 
+    def push_to_file
+      File.open(config_file, "wb") do |f|
+        f.write JSON.parse(data.to_json).to_yaml
+      end
+
+      Rebi.log "Saved config to #{config_file}"
+      Rebi.log "For more configs, please refer sample or github"
+    end
+
+    private
     def set_aws_config
       conf = {}
 

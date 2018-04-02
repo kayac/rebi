@@ -20,6 +20,13 @@ $ gem install rebi
 
 ## Usage
 
+### Init
+
+```bash
+$ bundle exec rebi init staging web
+# use profile option if you're using aws profile
+```
+
 ### Yaml config
 Default config file is `.rebi.yml` use `-c` to switch
 ```yaml
@@ -77,9 +84,11 @@ $ bundle exec rebi --help
 
 ### ERB in ebextensions config
 Use `rebi.env` to get environment variables config in .ebextensions
+config file name must end with .config.erb
+
 ```yaml
 # Ex
-# .ebextensions/00-envrionments.config
+# .ebextensions/00-envrionments.config.erb
 option_settings:
   - option_name: KEY
     value: <%= rebi.env[KEY] %>
