@@ -1,7 +1,7 @@
 module Rebi
   module Log
     def log mes, label=self.log_label
-        puts "#{label ? "#{colorize_prefix(label)}: " : ""}#{mes}"
+        puts "#{label.present? ? "#{colorize_prefix(label)}: " : ""}#{mes}"
     end
 
     def error mes, label=self.error_label

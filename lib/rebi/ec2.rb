@@ -5,7 +5,7 @@ module Rebi
 
     attr_reader :client
 
-    def initialize client
+    def initialize client=Aws::EC2::Client.new
       @client = client
     end
 

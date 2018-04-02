@@ -37,12 +37,12 @@ stages: #Required: Hash
                                         #   - web_extensions
                                         #   - web1_extensions
                                         # Result will has 01.config, 02.config(from web1_extensions) and 03.config
-      cfg_file: File path or cfg name   # Optional
 
       dockerrun: Dockerrun.aws.json.stg # Dockerrun file
       options: #Hash, Other custom options for using in erb
         use_basic: true # rebi.opts.use_basic
 
+      ebignore: .ebignore_web #Optional
       hooks:
         pre: ls # String or Array, run before upload source bundle
         post: ls # String or Array, run right after sending deploy request

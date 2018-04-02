@@ -27,6 +27,8 @@ require 'rebi/config'
 require 'rebi/config_environment'
 require 'rebi/error'
 require 'rebi/ec2'
+require 'rebi/eb'
+require 'rebi/init_service'
 require 'rebi/version'
 
 # Dotenv.load
@@ -43,11 +45,11 @@ module Rebi
   end
 
   def eb c=nil
-    @@eb = Aws::ElasticBeanstalk::Client.new
+    @@eb = Rebi::EB.new
   end
 
   def ec2
-    @@ec2_client = Rebi::EC2.new Aws::EC2::Client.new
+    @@ec2_client = Rebi::EC2.new
   end
 
   def iam
@@ -69,6 +71,11 @@ module Rebi
 
   def reload!
     config.reload!
+  end
+
+  def init stage_name, env_name
+    init = Rebi::InitService.new(stage_name, env_name)
+    init.execute
   end
 
 end

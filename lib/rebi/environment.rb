@@ -182,7 +182,7 @@ module Rebi
     def create_app_version opts={}
       return if opts[:settings_only]
       start = Time.now.utc
-      source_bundle = Rebi::ZipHelper.new.gen(self.config, opts)
+      source_bundle = Rebi::ZipHelper.new(self.config, opts).gen
       version_label = source_bundle[:label]
       key = "#{app_name}/#{version_label}.zip"
       log("Uploading source bundle: #{version_label}.zip")
@@ -303,8 +303,17 @@ module Rebi
 
       Rebi.ec2.authorize_ssh instance_id do
         user = "ec2-user"
-        key_file = "~/.ssh/#{instance.key_name}.pem"
-        raise Rebi::Error::KeyFileNotFound unless File.exists? File.expand_path(key_file)
+        key_files = [
+          "~/.ssh/#{instance.key_name}.pem",
+          "~/.ssh/#{instance.key_name}",
+        ]
+
+        key_file = key_files.find do |f|
+          File.exists? File.expand_path(f)
+        end
+
+        raise Rebi::Error::KeyFileNotFound unless key_file.present?
+
         cmd = "ssh -i #{key_file} #{user}@#{instance.public_ip_address}"
         log cmd
 
