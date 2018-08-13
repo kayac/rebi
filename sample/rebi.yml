@@ -7,7 +7,7 @@ profile: aws_profile # if use profile config, overwrite with --profile option
 aws_key: aws_key
 aws_secret: aws_secret
 
-stages: # Required: Hash
+stages: # Required, Hash
   development: # Stage name
     web: # Env name
       name: web01 # Optional, default: #{env_name}-#{stage_name}
@@ -15,13 +15,13 @@ stages: # Required: Hash
       cname_prefix: prefix # Optional
       tier: web or worker # Optional, default: web
       instance_type: t2.small # Optional, default: t2.small
-      instance_num: # Optional: min 1 max 1
+      instance_num: # Optional, min 1 max 1
         min: 1
         max: 1
       key_name: # Optional, if not set you cannot ssh into ec2 instances
       instance_profile: iam_profile # Optional, default: aws-elasticbeanstalk-ec2-role
                                     # http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/iam-instanceprofile.html
-      solution_stack_name: Ruby # Optional: default: "64bit Amazon Linux 2017.09 v2.6.0 running Ruby 2.4 (Puma)"
+      solution_stack_name: Ruby # Optional, default: "64bit Amazon Linux 2017.09 v2.6.0 running Ruby 2.4 (Puma)"
       env_file: .env.development # Optional
       environment_variables: # Optional, nil will be deleted when update,
                              # Use `rebi get_env stage --from-config` to get env settings
@@ -29,7 +29,7 @@ stages: # Required: Hash
                              # Nil env will be deleted when deploy
 
         - TIER: web
-      ebextensions: ebextension folders # Optional: String or Array of Strings
+      ebextensions: ebextension folders # Optional, String or Array of Strings
                                         # .ebextensions will be added automatically if not exists
                                         # The below one will be merge in to be above one
                                         # Example: .ebextensions has 01.config, web_extensions, 02.config, web1_extensions 02.config and 03.config
