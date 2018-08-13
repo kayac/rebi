@@ -10,7 +10,7 @@ aws_secret: aws_secret
 stages: # Required: Hash
   development: # Stage name
     web: # Env name
-      name: web01 # Optional, default: #{stage_name}-#{env_name}
+      name: web01 # Optional, default: #{env_name}-#{stage_name}
       description: Description # Optional,
       cname_prefix: prefix # Optional
       tier: web or worker # Optional, default: web
