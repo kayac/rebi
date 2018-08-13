@@ -7,8 +7,8 @@ profile: aws_profile # if use profile config, overwrite with --profile option
 aws_key: aws_key
 aws_secret: aws_secret
 
-stages: #Required: Hash
-  development: #Stage name
+stages: # Required: Hash
+  development: # Stage name
     web: # Env name
       name: web01 # Optional, default: #{stage_name}-#{env_name}
       description: Description # Optional,
@@ -39,7 +39,7 @@ stages: #Required: Hash
                                         # Result will has 01.config, 02.config(from web1_extensions) and 03.config
 
       dockerrun: Dockerrun.aws.json.stg # Dockerrun file
-      options: #Hash, Other custom options for using in erb
+      options: # Hash, Other custom options for using in erb
         use_basic: true # rebi.opts.use_basic
 
       ebignore: .ebignore_web #Optional
