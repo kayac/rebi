@@ -42,7 +42,7 @@ stages: # Required: Hash
       options: # Hash, Other custom options for using in erb
         use_basic: true # rebi.opts.use_basic
 
-      ebignore: .ebignore_web #Optional
+      ebignore: .ebignore_web # Optional
       hooks:
         pre: ls # String or Array, run before upload source bundle
         post: ls # String or Array, run right after sending deploy request
