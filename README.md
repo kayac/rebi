@@ -105,7 +105,7 @@ option_settings:
 
 ## Contributing
 Feel free to fork and request a pull, or submit a ticket
-https://github.com/khiemns54/rebi/issues
+https://github.com/kayac/rebi/issues
 
 ## License
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
