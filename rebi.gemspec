@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.version     = Rebi::VERSION
   s.authors     = ["KhiemNS"]
   s.email       = ["khiemns.k54@gmail.com"]
-  s.homepage    = "https://github.com/khiemns54/rebi"
+  s.homepage    = "https://github.com/kayac/rebi"
   s.summary     = "ElasticBeanstalk Deployment Tool"
   s.description = "Deploy ElasticBeanstalk with multiple deploy, switchable and dynamic generated ebextensions with erb"
   s.license     = "MIT"
