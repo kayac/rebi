@@ -125,6 +125,7 @@ command :init do |c|
     raise Rebi::Error.new("Stage cannot be nil") if stage.blank?
     raise Rebi::Error.new("Env cannot be blank") if env.blank?
 
+    Rebi.config.reload!
     Rebi.init stage, env
   end
 end
