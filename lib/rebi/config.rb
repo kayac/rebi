@@ -28,6 +28,10 @@ module Rebi
       data[:aws_secret] || ENV["AWS_SECRET_ACCESS_KEY"]
     end
 
+    def aws_session_token
+      ENV["AWS_SESSION_TOKEN"]
+    end
+
     def region
       data[:region]
     end
@@ -114,7 +118,7 @@ module Rebi
           })
       elsif aws_secret && aws_key
         conf.merge!(
-          credentials: Aws::Credentials::new(aws_key, aws_secret)
+          credentials: Aws::Credentials::new(aws_key, aws_secret, aws_session_token)
         )
       end
 
