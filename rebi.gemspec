@@ -33,5 +33,6 @@ Gem::Specification.new do |s|
   s.add_dependency "subprocess", "~> 1.3"
   s.add_dependency "pathspec", "~> 0.2"
 
+  s.add_development_dependency "rake", "~> 13.0"
   s.add_development_dependency "byebug", "~> 9"
 end
